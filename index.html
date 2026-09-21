@@ -1,0 +1,1520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="theme-color" content="#5b5ce2">
+<title>Stockly V5 — Final Billing Fix</title>
+
+<style>
+
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+}
+
+:root{
+  --bg:#f5f7fb;
+  --card:#ffffff;
+  --text:#171a21;
+  --muted:#7b8190;
+  --line:#e7eaf0;
+  --primary:#5b5ce2;
+  --green:#18a673;
+  --orange:#e99a27;
+  --red:#df4c5c;
+  --shadow:0 10px 30px rgba(25,30,50,.07);
+}
+
+body{
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  padding-bottom:85px;
+}
+
+body.dark{
+  --bg:#101218;
+  --card:#191c24;
+  --text:#f4f5f7;
+  --muted:#9da3b2;
+  --line:#292d38;
+  --shadow:0 10px 30px rgba(0,0,0,.25);
+}
+
+button,
+input,
+select,
+textarea{
+  font:inherit;
+}
+
+button{
+  border:0;
+  cursor:pointer;
+}
+
+.app{
+  width:100%;
+  max-width:720px;
+  margin:auto;
+  padding:18px 15px 25px;
+}
+
+.header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:24px;
+}
+
+.logo{
+  display:flex;
+  align-items:center;
+  gap:11px;
+}
+
+.logo-icon{
+  width:45px;
+  height:45px;
+  border-radius:14px;
+  background:linear-gradient(135deg,#5b5ce2,#7778f0);
+  color:white;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:22px;
+}
+
+.logo h1{
+  font-size:21px;
+  font-weight:850;
+}
+
+.logo p{
+  color:var(--muted);
+  font-size:12px;
+}
+
+.header-btn{
+  width:42px;
+  height:42px;
+  border-radius:14px;
+  background:var(--card);
+  color:var(--text);
+  box-shadow:var(--shadow);
+  font-size:18px;
+}
+
+.page{
+  display:none;
+}
+
+.page.active{
+  display:block;
+}
+
+.welcome{
+  margin-bottom:20px;
+}
+
+.welcome h2{
+  font-size:27px;
+  margin-bottom:6px;
+}
+
+.welcome p{
+  color:var(--muted);
+  font-size:14px;
+}
+
+.hero{
+  background:linear-gradient(135deg,#4e50d8,#7778f0);
+  color:white;
+  border-radius:25px;
+  padding:23px;
+  margin-bottom:16px;
+  box-shadow:0 15px 35px rgba(82,83,220,.25);
+}
+
+.hero small{
+  opacity:.82;
+}
+
+.hero-value{
+  font-size:34px;
+  font-weight:850;
+  margin:8px 0;
+}
+
+.hero-bottom{
+  display:flex;
+  justify-content:space-between;
+  font-size:12px;
+  opacity:.85;
+}
+
+.stats{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  margin-bottom:20px;
+}
+
+.stat{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:20px;
+  padding:17px;
+  box-shadow:var(--shadow);
+}
+
+.stat-icon{
+  font-size:20px;
+  margin-bottom:9px;
+}
+
+.stat h3{
+  font-size:21px;
+}
+
+.stat p{
+  color:var(--muted);
+  font-size:12px;
+  margin-top:3px;
+}
+
+.section-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin:22px 0 12px;
+}
+
+.section-head h3{
+  font-size:17px;
+}
+
+.section-head button{
+  background:none;
+  color:var(--primary);
+  font-weight:750;
+}
+
+.quick-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:11px;
+  margin-bottom:20px;
+}
+
+.quick{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:16px;
+  text-align:left;
+  color:var(--text);
+  box-shadow:var(--shadow);
+}
+
+.quick-icon{
+  font-size:23px;
+  margin-bottom:8px;
+}
+
+.quick strong{
+  display:block;
+  font-size:14px;
+}
+
+.quick span{
+  display:block;
+  color:var(--muted);
+  font-size:11px;
+  margin-top:3px;
+}
+
+.search{
+  width:100%;
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:13px 15px;
+  outline:none;
+  margin-bottom:14px;
+  color:var(--text);
+}
+
+.search:focus{
+  border-color:var(--primary);
+}
+
+.product,
+.party,
+.sale,
+.report-card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:20px;
+  padding:16px;
+  margin-bottom:11px;
+  box-shadow:var(--shadow);
+}
+
+.product-top,
+.party-top{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.product-name,
+.party-name{
+  font-size:16px;
+  font-weight:800;
+}
+
+.sku,
+.party-phone{
+  color:var(--muted);
+  font-size:11px;
+  margin-top:4px;
+}
+
+.stock{
+  font-size:11px;
+  font-weight:750;
+  padding:6px 9px;
+  border-radius:9px;
+  white-space:nowrap;
+}
+
+.stock.good{
+  color:var(--green);
+  background:#e9f8f2;
+}
+
+.stock.low{
+  color:var(--orange);
+  background:#fff4df;
+}
+
+.stock.out{
+  color:var(--red);
+  background:#ffeaed;
+}
+
+.product-details{
+  display:flex;
+  justify-content:space-between;
+  margin-top:16px;
+  padding-top:13px;
+  border-top:1px solid var(--line);
+}
+
+.detail label{
+  display:block;
+  color:var(--muted);
+  font-size:10px;
+  margin-bottom:3px;
+}
+
+.detail strong{
+  font-size:13px;
+}
+
+.actions{
+  display:flex;
+  gap:8px;
+  margin-top:14px;
+}
+
+.btn{
+  flex:1;
+  padding:11px 8px;
+  border-radius:12px;
+  font-weight:750;
+  font-size:12px;
+}
+
+.btn-primary{
+  background:var(--primary);
+  color:white;
+}
+
+.btn-soft{
+  background:#f0f1ff;
+  color:var(--primary);
+}
+
+body.dark .btn-soft{
+  background:#272943;
+}
+
+.btn-danger{
+  background:#fff0f2;
+  color:var(--red);
+}
+
+body.dark .btn-danger{
+  background:#302027;
+}
+
+.party-balance{
+  margin-top:13px;
+  padding-top:12px;
+  border-top:1px solid var(--line);
+  display:flex;
+  justify-content:space-between;
+}
+
+.balance.credit{
+  color:var(--red);
+  font-weight:800;
+}
+
+.balance.clear{
+  color:var(--green);
+  font-weight:800;
+}/* CONTINUED CSS */
+
+.sale-amount{
+  color:var(--green);
+  font-weight:850;
+}
+
+.sale-customer{
+  margin-top:8px;
+  color:var(--primary);
+  font-size:12px;
+  font-weight:700;
+}
+
+.report-card{
+  padding:19px;
+}
+
+.report-title{
+  color:var(--muted);
+  font-size:12px;
+}
+
+.report-value{
+  font-size:27px;
+  font-weight:850;
+  margin-top:6px;
+}
+
+.empty{
+  text-align:center;
+  padding:42px 20px;
+  color:var(--muted);
+}
+
+.empty-icon{
+  font-size:40px;
+  margin-bottom:10px;
+}
+
+.empty p{
+  font-size:13px;
+}
+
+.overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(15,18,30,.5);
+  backdrop-filter:blur(7px);
+  display:none;
+  align-items:flex-end;
+  z-index:50;
+}
+
+.overlay.show{
+  display:flex;
+}
+
+.modal{
+  background:var(--card);
+  color:var(--text);
+  width:100%;
+  max-width:720px;
+  max-height:92vh;
+  overflow-y:auto;
+  margin:auto;
+  border-radius:27px 27px 0 0;
+  padding:22px 18px 30px;
+}
+
+.modal-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:20px;
+}
+
+.modal-head h2{
+  font-size:20px;
+}
+
+.close{
+  width:38px;
+  height:38px;
+  border-radius:12px;
+  background:#f0f1f5;
+  color:#555;
+}
+
+body.dark .close{
+  background:#292d38;
+  color:white;
+}
+
+.field{
+  margin-bottom:14px;
+}
+
+.field label{
+  display:block;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:650;
+  margin-bottom:6px;
+}
+
+.field input,
+.field select,
+.field textarea{
+  width:100%;
+  border:1px solid var(--line);
+  background:var(--bg);
+  border-radius:13px;
+  padding:13px;
+  outline:none;
+  color:var(--text);
+}
+
+.field textarea{
+  min-height:80px;
+  resize:vertical;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus{
+  border-color:var(--primary);
+}
+
+.save{
+  width:100%;
+  padding:15px;
+  border-radius:15px;
+  background:var(--primary);
+  color:white;
+  font-weight:850;
+}
+
+.secondary{
+  width:100%;
+  padding:13px;
+  border-radius:14px;
+  background:var(--bg);
+  color:var(--text);
+  font-weight:750;
+  margin-top:9px;
+  border:1px solid var(--line);
+}
+
+.sale-summary{
+  background:var(--bg);
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:14px;
+  margin:5px 0 15px;
+}
+
+.summary-row{
+  display:flex;
+  justify-content:space-between;
+  font-size:13px;
+  margin:7px 0;
+}
+
+.summary-row.total{
+  border-top:1px solid var(--line);
+  padding-top:10px;
+  margin-top:10px;
+  font-size:17px;
+  font-weight:850;
+}
+
+.summary-row.profit-row{
+  color:var(--green);
+}
+
+.setting{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:16px;
+  margin-bottom:10px;
+  box-shadow:var(--shadow);
+}
+
+.setting-info strong{
+  display:block;
+  font-size:14px;
+}
+
+.setting-info span{
+  display:block;
+  color:var(--muted);
+  font-size:11px;
+  margin-top:3px;
+}
+
+.setting button{
+  padding:10px 13px;
+  border-radius:11px;
+  background:#f0f1ff;
+  color:var(--primary);
+  font-size:12px;
+  font-weight:750;
+}
+
+body.dark .setting button{
+  background:#272943;
+}
+
+.danger-setting button{
+  background:#fff0f2;
+  color:var(--red);
+}
+
+body.dark .danger-setting button{
+  background:#302027;
+}
+
+.toggle{
+  width:48px;
+  height:28px;
+  border-radius:20px;
+  background:#cdd1da;
+  position:relative;
+}
+
+.toggle:after{
+  content:"";
+  position:absolute;
+  width:22px;
+  height:22px;
+  border-radius:50%;
+  background:white;
+  top:3px;
+  left:3px;
+  transition:.2s;
+}
+
+.toggle.on{
+  background:var(--primary);
+}
+
+.toggle.on:after{
+  left:23px;
+}
+
+.floating{
+  position:fixed;
+  right:20px;
+  bottom:82px;
+  width:57px;
+  height:57px;
+  border-radius:19px;
+  background:linear-gradient(135deg,#5b5ce2,#7778f0);
+  color:white;
+  font-size:27px;
+  box-shadow:0 12px 28px rgba(91,92,226,.35);
+  z-index:20;
+}
+
+.bottom-nav{
+  position:fixed;
+  bottom:0;
+  left:0;
+  right:0;
+  height:70px;
+  background:rgba(255,255,255,.95);
+  backdrop-filter:blur(15px);
+  border-top:1px solid var(--line);
+  display:flex;
+  justify-content:center;
+  z-index:30;
+}
+
+body.dark .bottom-nav{
+  background:rgba(25,28,36,.95);
+}
+
+.nav-inner{
+  width:100%;
+  max-width:720px;
+  display:flex;
+  justify-content:space-around;
+}
+
+.nav-btn{
+  flex:1;
+  background:none;
+  color:#989daa;
+  font-size:9px;
+  font-weight:650;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+}
+
+.nav-btn span{
+  font-size:19px;
+}
+
+.nav-btn.active{
+  color:var(--primary);
+}
+
+.toast{
+  position:fixed;
+  left:50%;
+  bottom:90px;
+  transform:translateX(-50%) translateY(20px);
+  background:#171a21;
+  color:white;
+  padding:12px 17px;
+  border-radius:13px;
+  font-size:13px;
+  opacity:0;
+  pointer-events:none;
+  transition:.25s;
+  z-index:100;
+  white-space:nowrap;
+}
+
+.toast.show{
+  opacity:1;
+  transform:translateX(-50%) translateY(0);
+}
+
+@media(min-width:650px){
+
+  .overlay{
+    align-items:center;
+    padding:20px;
+  }
+
+  .modal{
+    border-radius:25px;
+  }
+
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+<header class="header">
+
+  <div class="logo">
+
+    <div class="logo-icon">
+      📦
+    </div>
+
+    <div>
+      <h1>Stockly</h1>
+      <p>Inventory Manager · V5</p>
+    </div>
+
+  </div>
+
+  <button
+    class="header-btn"
+    onclick="page('settings')"
+  >
+    ⚙️
+  </button>
+
+</header>
+<!-- ================= HOME ================= -->
+
+<section id="home" class="page active">
+
+  <div class="welcome">
+    <h2>Good to see you 👋</h2>
+    <p>Here's what's happening with your business.</p>
+  </div>
+
+  <div class="hero">
+
+    <small>Total Inventory Value</small>
+
+    <div
+      class="hero-value"
+      id="inventoryValue"
+    >
+      ₹0
+    </div>
+
+    <div class="hero-bottom">
+
+      <span id="productCountHero">
+        0 products
+      </span>
+
+      <span id="stockHero">
+        0 items
+      </span>
+
+    </div>
+
+  </div>
+
+
+  <div class="stats">
+
+    <div class="stat">
+
+      <div class="stat-icon">
+        💰
+      </div>
+
+      <h3 id="revenue">
+        ₹0
+      </h3>
+
+      <p>Total Sales</p>
+
+    </div>
+
+
+    <div class="stat">
+
+      <div class="stat-icon">
+        📈
+      </div>
+
+      <h3 id="profit">
+        ₹0
+      </h3>
+
+      <p>Total Profit</p>
+
+    </div>
+
+
+    <div class="stat">
+
+      <div class="stat-icon">
+        📦
+      </div>
+
+      <h3 id="totalStock">
+        0
+      </h3>
+
+      <p>Items in Stock</p>
+
+    </div>
+
+
+    <div class="stat">
+
+      <div class="stat-icon">
+        ⚠️
+      </div>
+
+      <h3 id="lowStock">
+        0
+      </h3>
+
+      <p>Low Stock</p>
+
+    </div>
+
+  </div>
+
+
+  <div class="section-head">
+
+    <h3>Quick Actions</h3>
+
+  </div>
+
+
+  <div class="quick-grid">
+
+    <button
+      class="quick"
+      onclick="openProduct()"
+    >
+
+      <div class="quick-icon">
+        📦
+      </div>
+
+      <strong>
+        Add Product
+      </strong>
+
+      <span>
+        Add a new item
+      </span>
+
+    </button>
+
+
+    <button
+      class="quick"
+      onclick="openSale()"
+    >
+
+      <div class="quick-icon">
+        🧾
+      </div>
+
+      <strong>
+        New Sale
+      </strong>
+
+      <span>
+        Create a bill
+      </span>
+
+    </button>
+
+
+    <button
+      class="quick"
+      onclick="openPurchase()"
+    >
+
+      <div class="quick-icon">
+        🛒
+      </div>
+
+      <strong>
+        Purchase
+      </strong>
+
+      <span>
+        Add stock
+      </span>
+
+    </button>
+
+
+    <button
+      class="quick"
+      onclick="openParty()"
+    >
+
+      <div class="quick-icon">
+        👥
+      </div>
+
+      <strong>
+        Add Customer
+      </strong>
+
+      <span>
+        Add a party
+      </span>
+
+    </button>
+
+  </div>
+
+
+  <div class="section-head">
+
+    <h3>
+      Low Stock
+    </h3>
+
+    <button
+      onclick="page('products')"
+    >
+      View all
+    </button>
+
+  </div>
+
+
+  <div id="lowStockList"></div>
+
+</section>
+
+
+<!-- ================= PRODUCTS ================= -->
+
+<section
+  id="products"
+  class="page"
+>
+
+  <div class="welcome">
+
+    <h2>
+      Products
+    </h2>
+
+    <p>
+      Manage your inventory easily.
+    </p>
+
+  </div>
+
+
+  <input
+    id="search"
+    class="search"
+    placeholder="🔎  Search products or SKU..."
+    oninput="renderProducts()"
+  >
+
+
+  <div id="productList"></div>
+
+</section>
+
+
+<!-- ================= PARTIES ================= -->
+
+<section
+  id="parties"
+  class="page"
+>
+
+  <div class="welcome">
+
+    <h2>
+      Parties 👥
+    </h2>
+
+    <p>
+      Manage customers and their balances.
+    </p>
+
+  </div>
+
+
+  <button
+    class="save"
+    style="margin-bottom:15px"
+    onclick="openParty()"
+  >
+    ＋ Add Customer
+  </button>
+
+
+  <input
+    id="partySearch"
+    class="search"
+    placeholder="🔎  Search customer or phone..."
+    oninput="renderParties()"
+  >
+
+
+  <div id="partyList"></div>
+
+</section>
+
+
+<!-- ================= SALES ================= -->
+
+<section
+  id="sales"
+  class="page"
+>
+
+  <div class="welcome">
+
+    <h2>
+      Sales
+    </h2>
+
+    <p>
+      Your recent bills and transactions.
+    </p>
+
+  </div>
+
+
+  <button
+    class="save"
+    style="margin-bottom:15px"
+    onclick="openSale()"
+  >
+    ＋ New Sale / Bill
+  </button>
+
+
+  <div id="salesList"></div>
+
+</section>
+<!-- ================= INVOICES ================= -->
+
+<section
+  id="invoices"
+  class="page"
+>
+
+  <div class="welcome">
+    <h2>Invoices 🧾</h2>
+    <p>Access all your sales and purchase invoices.</p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:15px;">
+    <button id="invoiceFilterAll" type="button" class="save" onclick="setInvoiceFilter('all')">All Invoices</button>
+    <button id="invoiceFilterSales" type="button" class="secondary" onclick="setInvoiceFilter('sale')">Sales</button>
+    <button id="invoiceFilterPurchases" type="button" class="secondary" onclick="setInvoiceFilter('purchase')">Purchases</button>
+    <button type="button" class="secondary" onclick="openPurchase()">＋ New Purchase</button>
+  </div>
+
+  <input
+    id="invoiceSearch"
+    class="search"
+    placeholder="🔎 Search invoice, customer or supplier..."
+    oninput="renderInvoices()"
+  >
+
+  <div id="invoiceList"></div>
+
+</section>
+
+
+<!-- ================= REPORTS ================= -->
+
+<section
+  id="reports"
+  class="page"
+>
+
+  <div class="welcome">
+
+    <h2>
+      Reports 📊
+    </h2>
+
+    <p>
+      Track your business performance.
+    </p>
+
+  </div>
+
+
+  <div class="report-grid">
+
+    <div class="report-card">
+
+      <div class="report-title">
+        Revenue
+      </div>
+
+      <div
+        class="report-value"
+        id="reportRevenue"
+      >
+        ₹0
+      </div>
+
+    </div>
+
+
+    <div class="report-card">
+
+      <div class="report-title">
+        Profit
+      </div>
+
+      <div
+        class="report-value"
+        id="reportProfit"
+      >
+        ₹0
+      </div>
+
+    </div>
+
+
+    <div class="report-card">
+
+      <div class="report-title">
+        Inventory
+      </div>
+
+      <div
+        class="report-value"
+        id="reportInventory"
+      >
+        ₹0
+      </div>
+
+    </div>
+
+
+    <div class="report-card">
+
+      <div class="report-title">
+        Customer Credit
+      </div>
+
+      <div
+        class="report-value"
+        id="reportCredit"
+      >
+        ₹0
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <div class="section-head">
+
+    <h3>
+      Transaction History
+    </h3>
+
+  </div>
+
+
+  <div id="transactionList"></div>
+
+</section>
+
+
+<!-- ================= PURCHASES ================= -->
+
+<section
+  id="purchases"
+  class="page"
+>
+
+  <div class="welcome">
+
+    <h2>
+      Purchases 🛒
+    </h2>
+
+    <p>
+      Restock products and record purchases.
+    </p>
+
+  </div>
+
+
+  <button
+    class="save"
+    style="margin-bottom:15px"
+    onclick="openPurchase()"
+  >
+    ＋ Add Purchase
+  </button>
+
+
+  <div id="purchaseList"></div>
+
+</section>
+
+
+<!-- ================= SETTINGS ================= -->
+
+<section
+  id="settings"
+  class="page"
+>
+
+  <div class="welcome">
+
+    <h2>
+      Settings ⚙️
+    </h2>
+
+    <p>
+      Customize and manage your Stockly data.
+    </p>
+
+  </div>
+
+
+  <div class="setting">
+
+    <div class="setting-info">
+
+      <strong>
+        Dark Mode
+      </strong>
+
+      <span>
+        Use a darker appearance
+      </span>
+
+    </div>
+
+
+    <label class="toggle">
+
+      <input
+        type="checkbox"
+        id="darkToggle"
+        onchange="toggleDark()"
+      >
+
+      <span></span>
+
+    </label>
+
+  </div>
+
+
+  <div class="setting">
+
+    <div class="setting-info">
+
+      <strong>
+        Backup Data
+      </strong>
+
+      <span>
+        Save all Stockly data to a file
+      </span>
+
+    </div>
+
+
+    <button
+      class="secondary"
+      onclick="backupData()"
+    >
+      Backup
+    </button>
+
+  </div>
+
+
+  <div class="setting">
+
+    <div class="setting-info">
+
+      <strong>
+        Restore Data
+      </strong>
+
+      <span>
+        Import your Stockly backup
+      </span>
+
+    </div>
+
+
+    <button
+      class="secondary"
+      onclick="document.getElementById('restoreFile').click()"
+    >
+      Restore
+    </button>
+
+    <input
+      type="file"
+      id="restoreFile"
+      accept=".json"
+      style="display:none"
+      onchange="restoreData(event)"
+    >
+
+  </div>
+
+
+  <div class="setting">
+
+    <div class="setting-info">
+
+      <strong>
+        Reset Data
+      </strong>
+
+      <span>
+        Delete all Stockly information
+      </span>
+
+    </div>
+
+
+    <button
+      class="secondary"
+      onclick="resetData()"
+    >
+      Reset
+    </button>
+
+  </div>
+
+</section>
+
+
+<!-- ================= BOTTOM NAVIGATION ================= -->
+
+<nav class="bottom-nav">
+
+  <div class="nav-inner">
+
+    <button
+      class="nav-btn active"
+      data-page="home"
+      onclick="page('home')"
+    >
+
+      <span>🏠</span>
+      <small>Home</small>
+
+    </button>
+
+
+    <button
+      class="nav-btn"
+      data-page="products"
+      onclick="page('products')"
+    >
+
+      <span>📦</span>
+      <small>Products</small>
+
+    </button>
+
+
+    <button
+      class="nav-btn"
+      data-page="sales"
+      onclick="page('sales')"
+    >
+
+      <span>🧾</span>
+      <small>Sales</small>
+
+    </button>
+
+
+    <button
+      class="nav-btn"
+      data-page="parties"
+      onclick="page('parties')"
+    >
+
+      <span>👥</span>
+      <small>Parties</small>
+
+    </button>
+
+
+    <button
+      class="nav-btn"
+      data-page="invoices"
+      onclick="page('invoices')"
+    >
+
+      <span>🧾</span>
+      <small>Invoices</small>
+
+    </button>
+
+
+    <button
+      class="nav-btn"
+      data-page="reports"
+      onclick="page('reports')"
+    >
+
+      <span>📊</span>
+      <small>Reports</small>
+
+    </button>
+
+  </div>
+
+</nav>
+
+
+<!-- ================= FLOATING BUTTON ================= -->
+
+<button
+  class="floating"
+  onclick="openSale()"
+  aria-label="New Sale"
+>
+  ＋
+</button>
+
+
+<!-- ================= TOAST ================= -->
+
+<div
+  id="toast"
+  class="toast"
+></div>
+
+
+<!-- ================= MODAL CONTAINER ================= -->
+
+<div
+  id="modalOverlay"
+  class="overlay"
+  onclick="closeModal(event)"
+>
+
+  <div
+    id="modal"
+    class="modal"
+    onclick="event.stopPropagation()"
+  >
+
+    <div class="modal-head">
+
+      <h2 id="modalTitle">
+        Stockly
+      </h2>
+
+      <button
+        class="close"
+        onclick="closeModal()"
+      >
+        ×
+      </button>
+
+    </div>
+
+
+    <div id="modalBody"></div>
+
+  </div>
+
+</div>
+
+
+<script src="app.js"></script>
+
+</div>
+
+</body>
+
+</html>
