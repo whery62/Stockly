@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <meta name="theme-color" content="#5b5ce2">
-<title>Stockly V5 — Final Billing Fix</title>
+<title>Stockly V5.1 — Rough Book</title>
 
 <style>
 
@@ -724,6 +724,42 @@ body.dark .bottom-nav{
 
 }
 
+
+/* ================= ROUGH BOOK ================= */
+.rough-hero{
+  background:linear-gradient(135deg,#4e50d8,#7778f0);
+  color:#fff;
+  border-radius:22px;
+  padding:20px;
+  margin-bottom:16px;
+  box-shadow:0 14px 32px rgba(82,83,220,.22);
+}
+.rough-hero h3{font-size:21px;margin-bottom:5px}
+.rough-hero p{font-size:13px;opacity:.86;line-height:1.5}
+.rough-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:15px 0}
+.rough-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:15px;margin-bottom:12px;box-shadow:var(--shadow)}
+.rough-card-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.rough-avatar{width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,#5b5ce2,#7778f0);color:#fff;display:flex;align-items:center;justify-content:center;font-size:19px;flex:0 0 auto}
+.rough-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
+.rough-chip{display:inline-flex;align-items:center;gap:4px;padding:6px 9px;border-radius:999px;background:var(--bg);color:var(--muted);font-size:11px}
+.rough-status{padding:6px 9px;border-radius:999px;background:rgba(24,166,115,.12);color:var(--green);font-size:11px;font-weight:800}
+.rough-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:13px}
+.rough-mini{background:var(--bg);border-radius:14px;padding:11px}
+.rough-mini span{display:block;color:var(--muted);font-size:11px;margin-bottom:4px}
+.rough-mini strong{font-size:15px}
+.rough-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.rough-toolbar button{width:auto;padding:9px 12px;border-radius:11px;background:var(--bg);color:var(--text);border:1px solid var(--line)}
+.rough-toolbar button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.rough-canvas-wrap{background:#fff;border-radius:16px;border:1px solid var(--line);overflow:hidden}
+.rough-canvas{display:block;width:100%;height:300px;touch-action:none;cursor:crosshair;background:#fff}
+.rough-note{background:var(--bg);border-radius:14px;padding:12px;margin-top:10px;line-height:1.55;font-size:13px;white-space:pre-wrap}
+.rough-task{display:flex;align-items:flex-start;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
+.rough-task:last-child{border-bottom:0}
+.rough-task input{margin-top:4px;width:18px;height:18px;accent-color:var(--primary)}
+.rough-task.done span{text-decoration:line-through;color:var(--muted)}
+.rough-link{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--primary);font-size:12px;margin-top:7px}
+@media(max-width:430px){.rough-actions{grid-template-columns:1fr}.rough-detail-grid{grid-template-columns:1fr}}
+
 </style>
 </head>
 
@@ -741,7 +777,7 @@ body.dark .bottom-nav{
 
     <div>
       <h1>Stockly</h1>
-      <p>Inventory Manager · V5</p>
+      <p>Inventory Manager · V5.1</p>
     </div>
 
   </div>
@@ -1373,6 +1409,28 @@ body.dark .bottom-nav{
 </section>
 
 
+
+<!-- ================= ROUGH BOOK ================= -->
+<section id="roughbook" class="page">
+  <div class="welcome">
+    <h2>Rough Book ✏️</h2>
+    <p>Keep meeting notes, client points and follow-ups in one place.</p>
+  </div>
+
+  <div class="rough-hero">
+    <h3>Turn conversations into opportunities.</h3>
+    <p>Write by hand, type notes, save follow-ups and keep the client meeting history with your business data.</p>
+  </div>
+
+  <div class="rough-actions">
+    <button class="save" type="button" onclick="openMeetingForm()">＋ New Meeting</button>
+    <button class="secondary" type="button" onclick="openQuickRoughNote()">✍️ Quick Note</button>
+  </div>
+
+  <input id="meetingSearch" class="search" placeholder="🔎 Search client or meeting..." oninput="renderMeetings()">
+  <div id="meetingList"></div>
+</section>
+
 <!-- ================= BOTTOM NAVIGATION ================= -->
 
 <nav class="bottom-nav">
@@ -1438,6 +1496,16 @@ body.dark .bottom-nav{
 
     </button>
 
+
+
+    <button
+      class="nav-btn"
+      data-page="roughbook"
+      onclick="page('roughbook')"
+    >
+      <span>✏️</span>
+      <small>Rough Book</small>
+    </button>
 
     <button
       class="nav-btn"

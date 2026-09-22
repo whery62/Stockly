@@ -7,11 +7,13 @@ const PRODUCT_KEY = "stockly_products";
 const TRANSACTION_KEY = "stockly_transactions";
 const PARTY_KEY = "stockly_parties";
 const DARK_KEY = "stockly_dark";
+const MEETING_KEY = "stockly_meetings";
 
 
 let products = [];
 let transactions = [];
 let parties = [];
+let meetings = [];
 
 
 /* ================= DATA LOADING ================= */
@@ -56,6 +58,13 @@ function loadData() {
     parties = [];
   }
 
+  try {
+    meetings = JSON.parse(localStorage.getItem(MEETING_KEY)) || [];
+    if (!Array.isArray(meetings)) meetings = [];
+  } catch (error) {
+    meetings = [];
+  }
+
 }
 
 
@@ -88,6 +97,10 @@ function saveParties() {
     JSON.stringify(parties)
   );
 
+}
+
+function saveMeetings() {
+  localStorage.setItem(MEETING_KEY, JSON.stringify(meetings));
 }
 
 
@@ -310,6 +323,12 @@ function refreshPage(name) {
   if (name === "reports") {
 
     renderReports();
+
+  }
+
+  if (name === "roughbook") {
+
+    renderMeetings();
 
   }
 
@@ -3850,12 +3869,24 @@ function renderInvoices() {
           <div><span>Total</span><strong>${money(invoice.total)}</strong></div>
         </div>
 
-        <button type="button" class="save" style="margin-top:12px;" onclick="${isSale ? `openInvoice('${esc(invoice.id)}')` : `openPurchaseInvoice('${esc(invoice.id)}')`}">
+        <button type="button" class="save invoice-view-btn" style="margin-top:12px;" data-invoice-id="${esc(invoice.id)}" data-invoice-type="${isSale ? "sale" : "purchase"}">
           🧾 View Invoice
         </button>
       </div>
     `;
   }).join("");
+
+  list.querySelectorAll(".invoice-view-btn").forEach(button => {
+    button.addEventListener("click", () => {
+      const invoiceId = button.dataset.invoiceId;
+      const invoiceType = button.dataset.invoiceType;
+      if (invoiceType === "purchase") {
+        openPurchaseInvoice(invoiceId);
+      } else {
+        openInvoice(invoiceId);
+      }
+    });
+  });
 }
 
 
@@ -4489,7 +4520,10 @@ function backupData() {
       transactions,
 
     parties:
-      parties
+      parties,
+
+    meetings:
+      meetings
 
   };
 
@@ -4637,12 +4671,18 @@ function restoreData(event) {
         parties =
           data.parties;
 
+        meetings =
+          Array.isArray(data.meetings)
+            ? data.meetings
+            : [];
+
 
         saveProducts();
 
         saveTransactions();
 
         saveParties();
+        saveMeetings();
 
 
         event.target.value =
@@ -4734,12 +4774,17 @@ function resetData() {
     PARTY_KEY
   );
 
+  localStorage.removeItem(
+    MEETING_KEY
+  );
+
 
   products = [];
 
   transactions = [];
 
   parties = [];
+  meetings = [];
 
 
   toast(
@@ -4756,6 +4801,263 @@ function resetData() {
 
 }
 
+
+
+/* ================= ROUGH BOOK / MEETINGS ================= */
+
+function meetingStatus(meeting){
+  const tasks = Array.isArray(meeting.tasks) ? meeting.tasks : [];
+  if (!tasks.length) return "In Progress";
+  return tasks.every(t => t.done) ? "Completed" : "In Progress";
+}
+
+function meetingInitial(name){
+  const value = String(name || "Client").trim();
+  return value ? value.charAt(0).toUpperCase() : "C";
+}
+
+function renderMeetings(){
+  const list = document.getElementById("meetingList");
+  if (!list) return;
+
+  const search = (document.getElementById("meetingSearch")?.value || "").trim().toLowerCase();
+  const rows = (Array.isArray(meetings) ? meetings : [])
+    .slice()
+    .sort((a,b) => new Date(b.dateTime || b.createdAt) - new Date(a.dateTime || a.createdAt))
+    .filter(m => {
+      if (!search) return true;
+      return [m.clientName,m.company,m.title,m.notes].join(" ").toLowerCase().includes(search);
+    });
+
+  if (!rows.length){
+    list.innerHTML = `<div class="empty"><div style="font-size:42px;margin-bottom:10px">✏️</div><strong>No meetings yet</strong><p>Create your first client meeting and keep every point in one place.</p></div>`;
+    return;
+  }
+
+  list.innerHTML = rows.map(m => {
+    const notesCount = Array.isArray(m.notesList) ? m.notesList.length : (m.notes ? 1 : 0);
+    const tasksCount = Array.isArray(m.tasks) ? m.tasks.length : 0;
+    const date = m.dateTime ? formatDate(m.dateTime) : formatDate(m.createdAt);
+    const status = meetingStatus(m);
+    return `
+      <div class="rough-card">
+        <div class="rough-card-top">
+          <div style="display:flex;gap:11px;min-width:0">
+            <div class="rough-avatar">${esc(meetingInitial(m.clientName))}</div>
+            <div style="min-width:0">
+              <h3 style="font-size:16px;margin-bottom:4px">${esc(m.clientName || "Client")}</h3>
+              <p style="color:var(--muted);font-size:12px">${esc(m.title || "Client meeting")}${m.company ? " · " + esc(m.company) : ""}</p>
+              ${m.meetingLink ? `<a class="rough-link" href="${esc(m.meetingLink)}" target="_blank" rel="noopener">🔗 Open meeting link</a>` : ""}
+            </div>
+          </div>
+          <span class="rough-status">${esc(status)}</span>
+        </div>
+        <div class="rough-meta">
+          <span class="rough-chip">📅 ${esc(date)}</span>
+          <span class="rough-chip">📝 ${notesCount} note${notesCount === 1 ? "" : "s"}</span>
+          <span class="rough-chip">☑️ ${tasksCount} follow-up${tasksCount === 1 ? "" : "s"}</span>
+        </div>
+        <button type="button" class="save" style="margin-top:12px" onclick="openMeeting('${esc(m.id)}')">Open Meeting</button>
+      </div>`;
+  }).join("");
+}
+
+function openMeetingForm(){
+  showModal("Create New Meeting", `
+    <form onsubmit="return saveMeeting(event)">
+      <div class="field"><label>Client Name *</label><input id="meetingClient" required placeholder="e.g. ABC Traders"></div>
+      <div class="field"><label>Company / Business</label><input id="meetingCompany" placeholder="e.g. ABC Traders Pvt. Ltd."></div>
+      <div class="field"><label>Meeting Title *</label><input id="meetingTitle" required placeholder="e.g. Product requirement / Price discussion"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field"><label>Date</label><input id="meetingDate" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+        <div class="field"><label>Time</label><input id="meetingTime" type="time" value="${new Date().toTimeString().slice(0,5)}"></div>
+      </div>
+      <div class="field"><label>Online Meeting Link (optional)</label><input id="meetingLink" type="url" placeholder="https://meet.google.com/..."></div>
+      <div class="field"><label>First Notes</label><textarea id="meetingInitialNotes" rows="5" placeholder="Write the important points from the meeting..."></textarea></div>
+      <button class="save" type="submit">Create Meeting</button>
+    </form>`);
+}
+
+function saveMeeting(event){
+  event.preventDefault();
+  const clientName = document.getElementById("meetingClient")?.value.trim();
+  const title = document.getElementById("meetingTitle")?.value.trim();
+  if (!clientName || !title){ toast("Client name and meeting title are required"); return false; }
+
+  const date = document.getElementById("meetingDate")?.value || new Date().toISOString().slice(0,10);
+  const time = document.getElementById("meetingTime")?.value || "00:00";
+  const initialNotes = document.getElementById("meetingInitialNotes")?.value.trim() || "";
+  const meeting = {
+    id: makeId("meeting"),
+    clientName,
+    company: document.getElementById("meetingCompany")?.value.trim() || "",
+    title,
+    dateTime: new Date(`${date}T${time}`).toISOString(),
+    meetingLink: document.getElementById("meetingLink")?.value.trim() || "",
+    notes: initialNotes,
+    notesList: initialNotes ? [{id:makeId("note"),text:initialNotes,createdAt:new Date().toISOString()}] : [],
+    tasks: [],
+    drawing: "",
+    createdAt: new Date().toISOString()
+  };
+  meetings.unshift(meeting);
+  saveMeetings();
+  closeModal();
+  renderMeetings();
+  toast("✅ Meeting saved");
+  setTimeout(() => openMeeting(meeting.id), 120);
+  return false;
+}
+
+function findMeeting(id){ return meetings.find(m => m.id === id); }
+
+function openMeeting(id){
+  const m = findMeeting(id);
+  if (!m){ toast("Meeting not found"); return; }
+  if (!Array.isArray(m.notesList)) m.notesList = m.notes ? [{id:makeId("note"),text:m.notes,createdAt:m.createdAt || new Date().toISOString()}] : [];
+  if (!Array.isArray(m.tasks)) m.tasks = [];
+
+  const notesHtml = m.notesList.length
+    ? m.notesList.map(n => `<div class="rough-note">${esc(n.text)}</div>`).join("")
+    : `<div class="empty"><p>No typed notes yet.</p></div>`;
+  const tasksHtml = m.tasks.length
+    ? m.tasks.map((t,i) => `<label class="rough-task ${t.done ? "done" : ""}"><input type="checkbox" ${t.done ? "checked" : ""} onchange="toggleMeetingTask('${esc(m.id)}',${i})"><span>${esc(t.text)}</span></label>`).join("")
+    : `<div class="empty"><p>No follow-up tasks yet.</p></div>`;
+
+  showModal(`${esc(m.clientName)} · Meeting`, `
+    <div>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:13px">
+        <div class="rough-avatar">${esc(meetingInitial(m.clientName))}</div>
+        <div><strong>${esc(m.clientName)}</strong><div style="font-size:12px;color:var(--muted)">${esc(m.company || m.title)}</div></div>
+      </div>
+      <div class="rough-meta" style="margin-bottom:14px">
+        <span class="rough-chip">📅 ${esc(formatDate(m.dateTime))}</span>
+        <span class="rough-chip">📝 ${m.notesList.length} notes</span>
+        <span class="rough-chip">☑️ ${m.tasks.length} tasks</span>
+      </div>
+      ${m.meetingLink ? `<a class="save" style="display:block;text-align:center;text-decoration:none;margin-bottom:14px" href="${esc(m.meetingLink)}" target="_blank" rel="noopener">🔗 Open Online Meeting</a>` : ""}
+
+      <div class="rough-toolbar">
+        <button type="button" class="active" onclick="showMeetingTab('meetingNotesTab',this)">📝 Notes</button>
+        <button type="button" onclick="showMeetingTab('meetingTasksTab',this)">☑️ Tasks</button>
+        <button type="button" onclick="showMeetingTab('meetingDetailsTab',this)">ℹ️ Details</button>
+      </div>
+
+      <div id="meetingNotesTab">
+        <div class="rough-toolbar">
+          <button type="button" class="active" onclick="showMeetingEditor('typedEditor',this)">T Text</button>
+          <button type="button" onclick="showMeetingEditor('drawEditor',this);initMeetingCanvas('${esc(m.id)}')">✏️ Handwriting</button>
+        </div>
+        <div id="typedEditor">
+          ${notesHtml}
+          <textarea id="newMeetingNote" rows="4" placeholder="Add another note..."></textarea>
+          <button type="button" class="save" style="margin-top:10px" onclick="addMeetingNote('${esc(m.id)}')">＋ Save Note</button>
+        </div>
+        <div id="drawEditor" style="display:none">
+          <div class="rough-canvas-wrap"><canvas id="meetingCanvas" class="rough-canvas"></canvas></div>
+          <div class="rough-toolbar" style="margin-top:10px">
+            <button type="button" onclick="clearMeetingCanvas()">↩ Clear</button>
+            <button type="button" class="save" onclick="saveMeetingDrawing('${esc(m.id)}')">💾 Save Handwriting</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="meetingTasksTab" style="display:none">
+        ${tasksHtml}
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <input id="newMeetingTask" placeholder="e.g. Send quotation on 24 Sep" style="flex:1">
+          <button type="button" class="save" style="width:auto;padding:10px 14px" onclick="addMeetingTask('${esc(m.id)}')">＋ Add</button>
+        </div>
+      </div>
+
+      <div id="meetingDetailsTab" style="display:none">
+        <div class="rough-detail-grid">
+          <div class="rough-mini"><span>Client</span><strong>${esc(m.clientName)}</strong></div>
+          <div class="rough-mini"><span>Company</span><strong>${esc(m.company || "—")}</strong></div>
+          <div class="rough-mini"><span>Meeting</span><strong>${esc(m.title)}</strong></div>
+          <div class="rough-mini"><span>Status</span><strong>${esc(meetingStatus(m))}</strong></div>
+        </div>
+        <button type="button" class="secondary" style="margin-top:12px" onclick="deleteMeeting('${esc(m.id)}')">🗑️ Delete Meeting</button>
+      </div>
+    </div>`);
+  if (m.drawing) setTimeout(() => loadMeetingDrawing(m.drawing), 80);
+}
+
+function showMeetingTab(id, button){
+  ["meetingNotesTab","meetingTasksTab","meetingDetailsTab"].forEach(x => { const el=document.getElementById(x); if(el) el.style.display = x===id ? "block":"none"; });
+  button.parentElement.querySelectorAll("button").forEach(b => b.classList.remove("active"));
+  button.classList.add("active");
+}
+
+function showMeetingEditor(id, button){
+  ["typedEditor","drawEditor"].forEach(x => { const el=document.getElementById(x); if(el) el.style.display = x===id ? "block":"none"; });
+  button.parentElement.querySelectorAll("button").forEach(b => b.classList.remove("active"));
+  button.classList.add("active");
+}
+
+function addMeetingNote(id){
+  const m=findMeeting(id); const input=document.getElementById("newMeetingNote");
+  if(!m || !input) return;
+  const text=input.value.trim(); if(!text){toast("Write something first");return;}
+  m.notesList = Array.isArray(m.notesList) ? m.notesList : [];
+  m.notesList.push({id:makeId("note"),text,createdAt:new Date().toISOString()});
+  m.notes = m.notesList.map(n=>n.text).join("\\n\\n");
+  saveMeetings(); toast("✅ Note saved"); openMeeting(id); renderMeetings();
+}
+
+function addMeetingTask(id){
+  const m=findMeeting(id); const input=document.getElementById("newMeetingTask");
+  if(!m || !input) return;
+  const text=input.value.trim(); if(!text){toast("Write a task first");return;}
+  m.tasks = Array.isArray(m.tasks) ? m.tasks : [];
+  m.tasks.push({id:makeId("task"),text,done:false});
+  saveMeetings(); toast("✅ Follow-up added"); openMeeting(id); renderMeetings();
+}
+
+function toggleMeetingTask(id,index){
+  const m=findMeeting(id); if(!m || !m.tasks[index]) return;
+  m.tasks[index].done=!m.tasks[index].done; saveMeetings(); openMeeting(id); renderMeetings();
+}
+
+let meetingDrawingState = {canvas:null,ctx:null,drawing:false,lastX:0,lastY:0};
+function initMeetingCanvas(id){
+  const m=findMeeting(id), canvas=document.getElementById("meetingCanvas"); if(!m||!canvas)return;
+  const ratio=Math.max(1,Math.min(2,window.devicePixelRatio||1));
+  const rect=canvas.getBoundingClientRect(); canvas.width=Math.round(rect.width*ratio); canvas.height=Math.round(rect.height*ratio);
+  const ctx=canvas.getContext("2d"); ctx.scale(ratio,ratio); ctx.lineWidth=2.2; ctx.lineCap="round"; ctx.lineJoin="round"; ctx.strokeStyle="#173a69";
+  meetingDrawingState={canvas,ctx,drawing:false,lastX:0,lastY:0};
+  if(m.drawing) loadMeetingDrawing(m.drawing);
+  const point=e=>{const r=canvas.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top};};
+  canvas.onpointerdown=e=>{e.preventDefault();const p=point(e);meetingDrawingState.drawing=true;meetingDrawingState.lastX=p.x;meetingDrawingState.lastY=p.y;canvas.setPointerCapture(e.pointerId)};
+  canvas.onpointermove=e=>{if(!meetingDrawingState.drawing)return;const p=point(e);ctx.beginPath();ctx.moveTo(meetingDrawingState.lastX,meetingDrawingState.lastY);ctx.lineTo(p.x,p.y);ctx.stroke();meetingDrawingState.lastX=p.x;meetingDrawingState.lastY=p.y};
+  canvas.onpointerup=()=>meetingDrawingState.drawing=false; canvas.onpointercancel=()=>meetingDrawingState.drawing=false;
+}
+function clearMeetingCanvas(){const c=meetingDrawingState.canvas,ctx=meetingDrawingState.ctx;if(!c||!ctx)return;ctx.clearRect(0,0,c.width,c.height)}
+function saveMeetingDrawing(id){
+  const m=findMeeting(id),c=meetingDrawingState.canvas; if(!m||!c){toast("Open the handwriting tab first");return}
+  m.drawing=c.toDataURL("image/png"); saveMeetings(); toast("✅ Handwriting saved"); renderMeetings();
+}
+function loadMeetingDrawing(data){
+  const c=meetingDrawingState.canvas,ctx=meetingDrawingState.ctx;if(!c||!ctx||!data)return;
+  const img=new Image(); img.onload=()=>{ctx.clearRect(0,0,c.width,c.height);ctx.drawImage(img,0,0,c.clientWidth,c.clientHeight)}; img.src=data;
+}
+function openQuickRoughNote(){
+  showModal("Quick Rough Note",`
+    <div class="field"><label>Client / Topic</label><input id="quickNoteTitle" placeholder="e.g. ABC Traders — price discussion"></div>
+    <div class="field"><label>Note</label><textarea id="quickNoteText" rows="9" placeholder="Write anything quickly..."></textarea></div>
+    <button type="button" class="save" onclick="saveQuickRoughNote()">💾 Save Note</button>`);
+}
+function saveQuickRoughNote(){
+  const title=document.getElementById("quickNoteTitle")?.value.trim()||"Quick Note";
+  const text=document.getElementById("quickNoteText")?.value.trim(); if(!text){toast("Write something first");return}
+  const m={id:makeId("meeting"),clientName:title,company:"",title:"Quick Rough Note",dateTime:new Date().toISOString(),meetingLink:"",notes:text,notesList:[{id:makeId("note"),text,createdAt:new Date().toISOString()}],tasks:[],drawing:"",createdAt:new Date().toISOString()};
+  meetings.unshift(m);saveMeetings();closeModal();renderMeetings();toast("✅ Rough note saved");
+}
+function deleteMeeting(id){
+  const m=findMeeting(id); if(!m)return;
+  if(!confirm(`Delete the meeting with ${m.clientName || "this client"}?`))return;
+  meetings=meetings.filter(x=>x.id!==id);saveMeetings();closeModal();renderMeetings();toast("Meeting deleted");
+}
 
 /* ================= ESCAPE CLOSE ================= */
 
@@ -4823,6 +5125,8 @@ function startStockly() {
 
   renderReports();
 
+  renderMeetings();
+
 
   page("home");
 
@@ -4844,6 +5148,8 @@ function refreshAll() {
   renderPurchases();
 
   renderReports();
+
+  renderMeetings();
 
 }
 
@@ -4867,3 +5173,8 @@ if (
 }
 
 
+
+// Make invoice actions explicitly available to dynamically rendered buttons.
+window.openPurchaseInvoice = openPurchaseInvoice;
+window.printPurchaseInvoice = printPurchaseInvoice;
+window.openInvoice = openInvoice;
