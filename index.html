@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <meta name="theme-color" content="#5b5ce2">
-<title>Stockly V5.1 — Rough Book</title>
+<title>Stockly V5 — Final Billing Fix</title>
 
 <style>
 
@@ -760,6 +760,18 @@ body.dark .bottom-nav{
 .rough-link{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--primary);font-size:12px;margin-top:7px}
 @media(max-width:430px){.rough-actions{grid-template-columns:1fr}.rough-detail-grid{grid-template-columns:1fr}}
 
+
+/* ================= CONTRACTS ================= */
+.contract-hero{background:linear-gradient(135deg,#182a68,#5b5ce2);color:#fff;border-radius:22px;padding:20px;margin-bottom:16px;box-shadow:0 14px 32px rgba(55,67,180,.24)}
+.contract-hero h3{font-size:21px;margin-bottom:5px}.contract-hero p{font-size:13px;opacity:.86;line-height:1.5}
+.contract-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:15px 0}
+.contract-card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:var(--shadow)}
+.contract-card-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.contract-badge{padding:6px 9px;border-radius:999px;font-size:10px;font-weight:850;white-space:nowrap}.contract-badge.purchase{background:#edf2ff;color:#4057c9}.contract-badge.sale{background:#e9f8f2;color:var(--green)}
+.contract-number{font-size:12px;color:var(--muted);margin-top:4px}.contract-parties{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.contract-party{background:var(--bg);border-radius:14px;padding:11px}.contract-party span{display:block;color:var(--muted);font-size:10px;margin-bottom:4px}.contract-party strong{font-size:13px}
+.contract-summary{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);margin-top:13px;padding-top:12px}.contract-total{font-size:17px;font-weight:850}.contract-actions-row{display:flex;gap:8px;margin-top:12px}.contract-actions-row button{flex:1;padding:10px;border-radius:11px;font-size:12px;font-weight:750}.contract-preview{background:#fff;color:#14213d;border-radius:18px;overflow:hidden;border:1px solid #dfe5ef}.contract-preview-head{padding:20px;background:linear-gradient(135deg,#182a68,#5b5ce2);color:#fff;display:flex;justify-content:space-between;gap:15px}.contract-preview-head.sale-head{background:linear-gradient(135deg,#075c54,#18a673)}.contract-preview-head h2{font-size:22px;margin-bottom:4px}.contract-preview-head p{font-size:12px;opacity:.86}.contract-doc{padding:16px}.contract-section{border:1px solid #dfe5ef;border-radius:12px;overflow:hidden;margin-bottom:12px}.contract-section-title{padding:9px 11px;background:#f4f7fb;font-weight:800;font-size:12px}.contract-section-body{padding:11px;font-size:11px}.contract-two{display:grid;grid-template-columns:1fr 1fr;gap:14px}.contract-kv{display:grid;grid-template-columns:105px 1fr;gap:5px;margin:4px 0}.contract-kv b{font-weight:700}.contract-items{width:100%;border-collapse:collapse;font-size:10px}.contract-items th,.contract-items td{border:1px solid #dfe5ef;padding:7px;text-align:left}.contract-items th{background:#f4f7fb}.contract-total-line{text-align:right;font-size:16px;font-weight:850;margin-top:9px}.contract-signatures{display:grid;grid-template-columns:1fr 1fr;gap:25px}.contract-sign{padding-top:35px;border-bottom:1px solid #9aa4b5;margin-bottom:7px}.contract-foot{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:13px 16px;background:#f4f7fb;font-size:10px;color:#5e6879}.contract-preview-actions{display:flex;gap:8px;margin-top:12px}.contract-preview-actions button{flex:1;padding:12px;border-radius:12px;font-weight:800}.contract-muted{color:#687388}.contract-filter{display:flex;gap:8px;overflow:auto;margin-bottom:12px}.contract-filter button{padding:9px 13px;border-radius:999px;background:var(--card);border:1px solid var(--line);color:var(--text);white-space:nowrap}.contract-filter button.active{background:var(--primary);border-color:var(--primary);color:#fff}
+@media(max-width:430px){.contract-actions{grid-template-columns:1fr}.contract-parties,.contract-two,.contract-signatures{grid-template-columns:1fr}.contract-preview-head{flex-direction:column}.contract-kv{grid-template-columns:90px 1fr}}
+@media print{body{background:#fff!important;padding:0!important}.contract-print-only{display:block!important}.contract-preview{border:0!important}.contract-preview-actions,.modal-head,.bottom-nav,.floating{display:none!important}}
+
 </style>
 </head>
 
@@ -777,7 +789,7 @@ body.dark .bottom-nav{
 
     <div>
       <h1>Stockly</h1>
-      <p>Inventory Manager · V5.1</p>
+      <p>Inventory Manager · V5</p>
     </div>
 
   </div>
@@ -1431,6 +1443,34 @@ body.dark .bottom-nav{
   <div id="meetingList"></div>
 </section>
 
+
+<!-- ================= CONTRACTS ================= -->
+<section id="contracts" class="page">
+  <div class="welcome">
+    <h2>Contracts 📄</h2>
+    <p>Create, save and print purchase and sales agreements.</p>
+  </div>
+
+  <div class="contract-hero">
+    <h3>Keep every deal documented.</h3>
+    <p>Make a professional contract for a supplier purchase or a customer sale, then save it with your Stockly data.</p>
+  </div>
+
+  <div class="contract-actions">
+    <button class="save" type="button" onclick="openContractForm('purchase')">🛒 Purchase Contract</button>
+    <button class="secondary" type="button" onclick="openContractForm('sale')">🏷️ Sales Contract</button>
+  </div>
+
+  <div class="contract-filter">
+    <button class="active" data-contract-filter="all" onclick="setContractFilter('all',this)">All</button>
+    <button data-contract-filter="purchase" onclick="setContractFilter('purchase',this)">Purchases</button>
+    <button data-contract-filter="sale" onclick="setContractFilter('sale',this)">Sales</button>
+  </div>
+
+  <input id="contractSearch" class="search" placeholder="🔎 Search contract, supplier or customer..." oninput="renderContracts()">
+  <div id="contractList"></div>
+</section>
+
 <!-- ================= BOTTOM NAVIGATION ================= -->
 
 <nav class="bottom-nav">
@@ -1505,6 +1545,15 @@ body.dark .bottom-nav{
     >
       <span>✏️</span>
       <small>Rough Book</small>
+    </button>
+
+    <button
+      class="nav-btn"
+      data-page="contracts"
+      onclick="page('contracts')"
+    >
+      <span>📄</span>
+      <small>Contracts</small>
     </button>
 
     <button
