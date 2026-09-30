@@ -8,14 +8,15 @@ const TRANSACTION_KEY = "stockly_transactions";
 const PARTY_KEY = "stockly_parties";
 const DARK_KEY = "stockly_dark";
 const MEETING_KEY = "stockly_meetings";
+const CONTRACT_KEY = "stockly_contracts";
 
 
 let products = [];
 let transactions = [];
 let parties = [];
 let meetings = [];
-let records = [];
-let activeRecordCategory = "all";
+let contracts = [];
+let contractFilter = "all";
 
 
 /* ================= DATA LOADING ================= */
@@ -68,10 +69,10 @@ function loadData() {
   }
 
   try {
-    records = JSON.parse(localStorage.getItem("stockly_records")) || [];
-    if (!Array.isArray(records)) records = [];
+    contracts = JSON.parse(localStorage.getItem(CONTRACT_KEY)) || [];
+    if (!Array.isArray(contracts)) contracts = [];
   } catch (error) {
-    records = [];
+    contracts = [];
   }
 
 }
@@ -112,8 +113,8 @@ function saveMeetings() {
   localStorage.setItem(MEETING_KEY, JSON.stringify(meetings));
 }
 
-function saveRecords() {
-  localStorage.setItem("stockly_records", JSON.stringify(records));
+function saveContracts() {
+  localStorage.setItem(CONTRACT_KEY, JSON.stringify(contracts));
 }
 
 
@@ -333,11 +334,6 @@ function refreshPage(name) {
   }
 
 
-  if (name === "records") {
-    renderRecords();
-  }
-
-
   if (name === "reports") {
 
     renderReports();
@@ -347,6 +343,13 @@ function refreshPage(name) {
   if (name === "roughbook") {
 
     renderMeetings();
+
+  }
+
+
+  if (name === "contracts") {
+
+    renderContracts();
 
   }
 
@@ -396,13 +399,33 @@ function showModal(title, html) {
 
 
 function closeModal(event) {
-  const overlay = document.getElementById("modalOverlay");
+
+  if (
+    event &&
+    event.target !==
+      document.getElementById(
+        "modalOverlay"
+      )
+  ) {
+    return;
+  }
+
+
+  const overlay =
+    document.getElementById(
+      "modalOverlay"
+    );
+
   if (!overlay) return;
-  // Clicking the dim background closes it. Any direct closeModal() call
-  // (Cancel / X / after Save) always closes it.
-  if (event && event.currentTarget === overlay && event.target !== overlay) return;
-  overlay.classList.remove("show");
-  document.body.classList.remove("modal-open");
+
+  overlay.classList.remove(
+    "show"
+  );
+
+  document.body.classList.remove(
+    "modal-open"
+  );
+
 }
 
 
@@ -3357,11 +3380,6 @@ function openPurchase(productId = null) {
         </div>
 
         <div class="field">
-          <label>GST (%)</label>
-          <input id="purchaseGstRate" type="number" min="0" max="100" step="0.01" value="0" oninput="updatePurchaseSummary()" placeholder="e.g. 5 or 18">
-        </div>
-
-        <div class="field">
           <label>Payment Method</label>
           <select id="purchasePayment">
             <option value="Cash">Cash</option>
@@ -3505,26 +3523,25 @@ function calculatePurchase() {
   purchaseItems.forEach(item => {
     subtotal += Math.max(0, num(item.quantity)) * Math.max(0, num(item.price));
   });
-  const discount = Math.min(subtotal, Math.max(0, num(document.getElementById("purchaseDiscount")?.value)));
-  const taxable = Math.max(0, subtotal - discount);
-  const gstRate = Math.min(100, Math.max(0, num(document.getElementById("purchaseGstRate")?.value)));
-  const gstAmount = taxable * gstRate / 100;
-  const total = taxable + gstAmount;
-  return { subtotal, discount, taxable, gstRate, gstAmount, total };
+
+  const discount = Math.max(0, num(document.getElementById("purchaseDiscount")?.value));
+  const total = Math.max(0, subtotal - discount);
+  return { subtotal, discount, total };
 }
 
 function updatePurchaseSummary() {
   const box = document.getElementById("purchaseSummary");
   if (!box) return;
+
   const data = calculatePurchase();
+
   box.innerHTML = `
     <div class="summary-row"><span>Subtotal</span><strong>${money(data.subtotal)}</strong></div>
     <div class="summary-row"><span>Discount</span><strong>- ${money(data.discount)}</strong></div>
-    <div class="summary-row"><span>Taxable Amount</span><strong>${money(data.taxable)}</strong></div>
-    <div class="summary-row"><span>GST (${data.gstRate.toFixed(2)}%)</span><strong>${money(data.gstAmount)}</strong></div>
-    <div class="summary-row total"><span>Grand Total</span><strong>${money(data.total)}</strong></div>
+    <div class="summary-row" style="font-size:18px;font-weight:800;"><span>Total</span><strong>${money(data.total)}</strong></div>
   `;
 }
+
 
 /* ================= SAVE PURCHASE + AUTO INVOICE ================= */
 
@@ -3541,7 +3558,6 @@ function savePurchase(event) {
     const supplierPhone = document.getElementById("purchaseSupplierPhone")?.value.trim() || "";
     const paymentMethod = document.getElementById("purchasePayment")?.value || "Cash";
     const note = document.getElementById("purchaseNote")?.value.trim() || "";
-    const gstRate = Math.min(100, Math.max(0, num(document.getElementById("purchaseGstRate")?.value)));
 
     const preparedItems = [];
 
@@ -3589,9 +3605,6 @@ function savePurchase(event) {
       items: preparedItems,
       subtotal: data.subtotal,
       discount: data.discount,
-      taxableAmount: data.taxable,
-      gstRate: data.gstRate,
-      gstAmount: data.gstAmount,
       total: data.total,
       paymentMethod,
       note,
@@ -3745,9 +3758,7 @@ function openPurchaseInvoice(purchaseId) {
         <div style="margin-top:18px;border-top:1px solid #ccc;padding-top:10px;">
           <div class="summary-row"><span>Subtotal</span><strong>${money(purchase.subtotal)}</strong></div>
           <div class="summary-row"><span>Discount</span><strong>- ${money(purchase.discount)}</strong></div>
-          <div class="summary-row"><span>Taxable Amount</span><strong>${money(purchase.taxableAmount ?? Math.max(0, num(purchase.subtotal)-num(purchase.discount)))}</strong></div>
-          <div class="summary-row"><span>GST (${num(purchase.gstRate).toFixed(2)}%)</span><strong>${money(purchase.gstAmount)}</strong></div>
-          <div class="summary-row" style="font-size:20px;font-weight:900;margin-top:8px;"><span>GRAND TOTAL</span><strong>${money(purchase.total)}</strong></div>
+          <div class="summary-row" style="font-size:20px;font-weight:900;margin-top:8px;"><span>TOTAL</span><strong>${money(purchase.total)}</strong></div>
           <div class="summary-row"><span>Payment</span><strong>${esc(purchase.paymentMethod || "Cash")}</strong></div>
         </div>
 
@@ -3794,7 +3805,7 @@ function printPurchaseInvoice(purchaseId) {
     <p><strong>Date:</strong> ${formatDate(purchase.date)}</p>
     <p><strong>Supplier:</strong> ${esc(purchase.supplier || "No supplier")}</p>
     <table><thead><tr><th>Product</th><th>Qty</th><th>Buy Price</th><th>Total</th></tr></thead><tbody>${rows}</tbody></table>
-    <div class="total">Subtotal: ${money(purchase.subtotal)}<br>Discount: ${money(purchase.discount)}<br>Taxable Amount: ${money(purchase.taxableAmount ?? Math.max(0, num(purchase.subtotal)-num(purchase.discount)))}<br>GST (${num(purchase.gstRate).toFixed(2)}%): ${money(purchase.gstAmount)}<br>GRAND TOTAL: ${money(purchase.total)}</div>
+    <div class="total">Subtotal: ${money(purchase.subtotal)}<br>Discount: ${money(purchase.discount)}<br>TOTAL: ${money(purchase.total)}</div>
     <p><strong>Payment:</strong> ${esc(purchase.paymentMethod || "Cash")}</p>
     <p style="text-align:center;margin-top:40px">Purchase recorded successfully.</p>
     </body></html>
@@ -3899,98 +3910,6 @@ function renderInvoices() {
   });
 }
 
-
-/* ================= PROFESSIONAL RECORDS ================= */
-const RECORD_SCHEMAS = {
-  party:{label:"Party",icon:"👤",desc:"Customers, suppliers and business contacts",fields:[
-    ["name","Name","text",true],["phone","Phone","tel"],["address","Address","textarea"],["openingBalance","Opening Balance (₹)","number"],["notes","Notes","textarea"]]},
-  product:{label:"Product",icon:"📦",desc:"Product master and stock references",fields:[
-    ["name","Product Name","text",true],["sku","SKU","text"],["unit","Unit","text"],["purchasePrice","Purchase Price (₹)","number"],["sellingPrice","Selling Price (₹)","number"],["stock","Stock","number"],["notes","Notes","textarea"]]},
-  employee:{label:"Employee",icon:"🧑‍💼",desc:"Staff and employee information",fields:[
-    ["name","Name","text",true],["phone","Phone","tel"],["role","Role / Designation","text"],["salary","Salary (₹)","number"],["joiningDate","Joining Date","date"],["address","Address","textarea"],["notes","Notes","textarea"]]},
-  expense:{label:"Expense",icon:"💸",desc:"Business expenses and details",fields:[
-    ["name","Expense Name","text",true],["phone","Phone","tel"],["address","Address","textarea"],["details","Details / Account No. / Reference","textarea"],["notes","Notes","textarea"]]},
-  broker:{label:"Broker",icon:"🤝",desc:"Broker and commission contacts",fields:[
-    ["name","Name","text",true],["phone","Phone","tel"],["address","Address","textarea"],["commission","Commission","text"],["notes","Notes","textarea"]]},
-  bank:{label:"Bank",icon:"🏦",desc:"Banking and account references",fields:[
-    ["name","Bank Name","text",true],["holder","Account Holder","text"],["accountNo","Account Number","text"],["ifsc","IFSC","text"],["branch","Branch","text"],["notes","Notes","textarea"]]},
-  friend:{label:"Friend",icon:"👥",desc:"Personal contacts you want to keep handy",fields:[
-    ["name","Name","text",true],["phone","Phone","tel"],["address","Address","textarea"],["details","Details","textarea"],["notes","Notes","textarea"]]},
-  interest:{label:"Interest Party",icon:"📈",desc:"Interest lending and receiving references",fields:[
-    ["name","Name","text",true],["phone","Phone","tel"],["principal","Principal Amount (₹)","number"],["interestRate","Interest %","number"],["startDate","Start Date","date"],["dueDate","Due Date","date"],["notes","Notes","textarea"]]},
-  owner:{label:"Owner",icon:"👑",desc:"Owner and proprietor information",fields:[
-    ["name","Name","text",true],["phone","Phone","tel"],["address","Address","textarea"],["details","Details","textarea"],["notes","Notes","textarea"]]},
-  goods:{label:"Goods",icon:"🧺",desc:"Goods, quantities and rate references",fields:[
-    ["name","Goods Name","text",true],["unit","Unit","text"],["quantity","Quantity","number"],["rate","Rate (₹)","number"],["notes","Notes","textarea"]]},
-  bardana:{label:"Bardana Party",icon:"🛍️",desc:"Bags / bardana party records",fields:[
-    ["name","Party Name","text",true],["phone","Phone","tel"],["address","Address","textarea"],["bagType","Bag Type","text"],["quantity","Quantity","number"],["rate","Rate (₹)","number"],["notes","Notes","textarea"]]}
-};
-
-function recordEsc(value){return esc(value);}
-function renderRecords(){
-  const cats=document.getElementById("recordCategories"), list=document.getElementById("recordList");
-  const search=document.getElementById("recordSearch");
-  const listTitle=document.getElementById("recordListTitle")?.parentElement;
-  if(!cats||!list)return;
-  const q=(search?.value||"").trim().toLowerCase();
-  const keys=Object.keys(RECORD_SCHEMAS);
-  // “All Records” is the Records dashboard, NOT a list of every saved record.
-  // Each category is its own working section with its own add form.
-  cats.innerHTML=`<div class="record-cat ${activeRecordCategory==='all'?'active':''}" onclick="setRecordCategory('all')"><div class="record-cat-icon">📚</div><strong>All Records</strong><span>${records.length} saved</span><small>Choose a record type below</small></div>`+
-    keys.map(k=>{const c=RECORD_SCHEMAS[k];const count=records.filter(r=>r.category===k).length;return `<div class="record-cat ${activeRecordCategory===k?'active':''}" onclick="setRecordCategory('${k}')"><div class="record-cat-icon">${c.icon}</div><strong>${c.label}</strong><span>${count} saved</span><small>${recordEsc(c.desc)}</small><button type="button" class="record-cat-add" onclick="event.stopPropagation();openRecordForm('${k}')">＋ Add ${recordEsc(c.label)}</button></div>`}).join("");
-  document.getElementById("recordCount").textContent=records.length;
-
-  // Dashboard mode: show only the record-type choices. Never show all saved records here.
-  if(activeRecordCategory==='all'){
-    if(search) search.style.display='none';
-    if(listTitle) listTitle.style.display='none';
-    list.innerHTML='';
-    list.style.display='none';
-    return;
-  }
-
-  if(search) search.style.display='block';
-  if(listTitle) listTitle.style.display='flex';
-  list.style.display='block';
-  const filtered=records.filter(r=>{if(r.category!==activeRecordCategory)return false;if(!q)return true;return JSON.stringify(r).toLowerCase().includes(q)}).sort((a,b)=>new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt));
-  const title=RECORD_SCHEMAS[activeRecordCategory]?.label||'Records';
-  document.getElementById("recordListTitle").textContent=title;
-  if(!filtered.length){list.innerHTML=`<div class="record-empty"><div>${RECORD_SCHEMAS[activeRecordCategory]?.icon||'📒'}</div><strong>No ${title.toLowerCase()} records yet</strong><p style="margin-top:5px">Use “Add ${title}” above to create your first entry.</p></div>`;return;}
-  list.innerHTML=filtered.map(recordCard).join("");
-}
-function setRecordCategory(category){activeRecordCategory=category;renderRecords();}
-function recordCard(r){
-  const c=RECORD_SCHEMAS[r.category]||RECORD_SCHEMAS.party;
-  const fields=c.fields.filter(f=>r[f[0]]!==undefined&&String(r[f[0]]).trim()!=="").slice(0,4);
-  return `<div class="record-card"><div class="record-card-top"><div><h3>${recordEsc(r.name||r.expenseName||r.goodsName||c.label)}</h3><div style="color:var(--muted);font-size:11px;margin-top:3px">Updated ${formatDate(r.updatedAt||r.createdAt)}</div></div><span class="record-type">${c.icon} ${c.label}</span></div>${fields.length?`<div class="record-meta">${fields.map(f=>`<div><span>${recordEsc(f[1])}</span><strong>${recordEsc(r[f[0]])}</strong></div>`).join("")}</div>`:""}${r.notes?`<div class="record-note">${recordEsc(r.notes)}</div>`:""}<div class="record-actions"><button onclick="openRecordForm('${r.category}','${r.id}')">✏️ Edit</button><button class="danger" onclick="deleteRecord('${r.id}')">🗑️ Delete</button></div></div>`;
-}
-function openRecordForm(category=activeRecordCategory==='all'?'party':activeRecordCategory,id=null){
-  if(!RECORD_SCHEMAS[category]) category='party';
-  const schema=RECORD_SCHEMAS[category];
-  const existing=id?records.find(r=>r.id===id):null;
-  if(id&&!existing){toast('Record not found');return;}
-
-  const fields=schema.fields.map(f=>{
-    const [k,l,t,req]=f;
-    const v=recordEsc(existing?.[k]??'');
-    const full=(t==='textarea' || k==='notes' || k==='details');
-    if(t==='textarea') return `<div class="field ${full?'full':''}"><label>${recordEsc(l)}${req?' *':''}</label><textarea id="rf_${k}" ${req?'required':''} rows="3">${v}</textarea></div>`;
-    return `<div class="field ${full?'full':''}"><label>${recordEsc(l)}${req?' *':''}</label><input id="rf_${k}" type="${t}" value="${v}" ${req?'required':''}></div>`;
-  }).join('');
-
-  showModal(`${id?'Edit':'Add'} ${schema.label}`,`
-    <form onsubmit="saveRecord(event,'${category}','${id||''}')">
-      <div class="record-form-intro">${schema.icon} <strong>${recordEsc(schema.label)}</strong><span>${recordEsc(schema.desc)}</span></div>
-      <div class="record-form-grid">${fields}</div>
-      <div class="record-form-actions">
-        <button type="button" class="secondary" onclick="closeModal()">Cancel</button>
-        <button type="submit" class="save">${id?'Save Changes':'Save Record'}</button>
-      </div>
-    </form>
-  `);
-}
-function saveRecord(event,category,id){event.preventDefault();const schema=RECORD_SCHEMAS[category];if(!schema)return;const obj={category};schema.fields.forEach(f=>{const el=document.getElementById('rf_'+f[0]);obj[f[0]]=el?el.value.trim():''});if(!obj.name&&!obj.expenseName&&!obj.goodsName){toast('Enter a name');return;}if(id){const r=records.find(x=>x.id===id);if(!r){toast('Record not found');return;}Object.assign(r,obj,{updatedAt:new Date().toISOString()});toast('Record updated');}else{records.unshift({id:makeId('record'),...obj,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});toast('Record saved');}saveRecords();closeModal();renderRecords();}
-function deleteRecord(id){const r=records.find(x=>x.id===id);if(!r)return;if(!confirm(`Delete ${r.name||r.expenseName||r.goodsName||'this record'}?`))return;records=records.filter(x=>x.id!==id);saveRecords();renderRecords();toast('Record deleted');}
 
 /* ================= DASHBOARD ================= */
 
@@ -4627,8 +4546,8 @@ function backupData() {
     meetings:
       meetings,
 
-    records:
-      records
+    contracts:
+      contracts
 
   };
 
@@ -4781,9 +4700,9 @@ function restoreData(event) {
             ? data.meetings
             : [];
 
-        records =
-          Array.isArray(data.records)
-            ? data.records
+        contracts =
+          Array.isArray(data.contracts)
+            ? data.contracts
             : [];
 
 
@@ -4793,7 +4712,7 @@ function restoreData(event) {
 
         saveParties();
         saveMeetings();
-        saveRecords();
+        saveContracts();
 
 
         event.target.value =
@@ -4889,7 +4808,9 @@ function resetData() {
     MEETING_KEY
   );
 
-  localStorage.removeItem("stockly_records");
+  localStorage.removeItem(
+    CONTRACT_KEY
+  );
 
 
   products = [];
@@ -4898,7 +4819,7 @@ function resetData() {
 
   parties = [];
   meetings = [];
-  records = [];
+  contracts = [];
 
 
   toast(
@@ -5173,6 +5094,251 @@ function deleteMeeting(id){
   meetings=meetings.filter(x=>x.id!==id);saveMeetings();closeModal();renderMeetings();toast("Meeting deleted");
 }
 
+
+
+/* ================= CONTRACTS ================= */
+
+function contractTypeLabel(type){
+  return type === "purchase" ? "Purchase Contract" : "Sales Contract";
+}
+
+function contractPrefix(type){
+  return type === "purchase" ? "PC" : "SC";
+}
+
+function contractNumber(type){
+  const year = new Date().getFullYear();
+  const count = contracts.filter(c => c.type === type).length + 1;
+  return `${contractPrefix(type)}-${year}-${String(count).padStart(4,"0")}`;
+}
+
+function contractPartyLabel(c){
+  return c.type === "purchase" ? (c.supplierName || "Supplier") : (c.customerName || "Customer");
+}
+
+function contractTotal(c){
+  return Math.max(0, num(c.quantity)) * Math.max(0, num(c.unitPrice));
+}
+
+function renderContracts(){
+  const list = document.getElementById("contractList");
+  if (!list) return;
+  const search = (document.getElementById("contractSearch")?.value || "").trim().toLowerCase();
+  let rows = (Array.isArray(contracts) ? contracts : []).slice().sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  rows = rows.filter(c => {
+    const typeOk = contractFilter === "all" || c.type === contractFilter;
+    const hay = [c.contractNo,c.supplierName,c.customerName,c.businessName,c.productName,c.company].join(" ").toLowerCase();
+    return typeOk && (!search || hay.includes(search));
+  });
+
+  if (!rows.length){
+    list.innerHTML = `<div class="empty"><div style="font-size:42px;margin-bottom:10px">📄</div><strong>No contracts yet</strong><p>Create a purchase or sales contract to keep your deals documented.</p></div>`;
+    return;
+  }
+
+  list.innerHTML = rows.map(c => {
+    const party = contractPartyLabel(c);
+    const total = contractTotal(c);
+    const badge = c.type === "purchase" ? "purchase" : "sale";
+    return `<div class="contract-card">
+      <div class="contract-card-top">
+        <div style="min-width:0"><strong style="font-size:16px">${esc(contractTypeLabel(c.type))}</strong><div class="contract-number">${esc(c.contractNo)} · ${esc(formatDate(c.date))}</div></div>
+        <span class="contract-badge ${badge}">${c.type === "purchase" ? "PURCHASE" : "SALE"}</span>
+      </div>
+      <div class="contract-parties">
+        <div class="contract-party"><span>${c.type === "purchase" ? "Supplier" : "Customer"}</span><strong>${esc(party)}</strong></div>
+        <div class="contract-party"><span>Product</span><strong>${esc(c.productName || "—")}</strong></div>
+      </div>
+      <div class="contract-summary"><span class="contract-muted">${esc(String(c.quantity || 0))} units</span><span class="contract-total">${money(total)}</span></div>
+      <div class="contract-actions-row"><button class="btn-soft" type="button" onclick="openContract('${esc(c.id)}')">Open</button><button class="btn-primary" type="button" onclick="printContract('${esc(c.id)}')">Print</button></div>
+    </div>`;
+  }).join("");
+}
+
+function setContractFilter(type, button){
+  contractFilter = type;
+  document.querySelectorAll("[data-contract-filter]").forEach(b=>b.classList.remove("active"));
+  if (button) button.classList.add("active");
+  renderContracts();
+}
+
+function openContractForm(type){
+  const isPurchase = type === "purchase";
+  const today = new Date().toISOString().slice(0,10);
+  const productOptions = products.length
+    ? products.map(p => `<option value="${esc(p.id)}">${esc(p.name)}${p.sku ? " · " + esc(p.sku) : ""}</option>`).join("")
+    : `<option value="">No products added yet</option>`;
+
+  showModal(isPurchase ? "New Purchase Contract" : "New Sales Contract", `
+    <form onsubmit="return saveContract(event,'${esc(type)}')">
+      <div class="field"><label>${isPurchase ? "Supplier Name" : "Customer Name"} *</label><input id="contractParty" required placeholder="e.g. ABC Traders"></div>
+      <div class="field"><label>Business / Company</label><input id="contractCompany" placeholder="Business name"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field"><label>Phone</label><input id="contractPhone" type="tel" placeholder="Phone number"></div>
+        <div class="field"><label>Contract Date</label><input id="contractDate" type="date" value="${today}"></div>
+      </div>
+      <div class="field"><label>Address</label><textarea id="contractAddress" rows="2" placeholder="Full address"></textarea></div>
+      <div class="field"><label>Product</label><select id="contractProduct" onchange="fillContractProduct()"><option value="">Custom / select product</option>${productOptions}</select></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field"><label>SKU</label><input id="contractSku" placeholder="SKU"></div>
+        <div class="field"><label>Category</label><input id="contractCategory" placeholder="Category"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field"><label>Quantity</label><input id="contractQty" type="number" min="1" step="1" value="1" oninput="updateContractTotal()"></div>
+        <div class="field"><label>Unit Price (₹)</label><input id="contractPrice" type="number" min="0" step="0.01" value="0" oninput="updateContractTotal()"></div>
+      </div>
+      <div class="sale-summary"><div class="summary-row total"><span>Total Amount</span><span id="contractTotalPreview">₹0</span></div></div>
+      <div class="field"><label>Payment Terms</label><input id="contractPayment" value="${isPurchase ? "50% Advance, 50% Before Delivery" : "Full Payment (UPI / Cash / Card)"}"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field"><label>Delivery Date</label><input id="contractDeliveryDate" type="date"></div>
+        <div class="field"><label>Delivery Location</label><input id="contractDeliveryLocation" placeholder="Delivery address"></div>
+      </div>
+      <div class="field"><label>Warranty / Return Terms</label><input id="contractWarranty" value="${isPurchase ? "As per supplier policy" : "Return/replacement within 7 days if damaged"}"></div>
+      <div class="field"><label>Other Terms</label><textarea id="contractOtherTerms" rows="4" placeholder="Add any special agreement, delivery condition, payment note, etc."></textarea></div>
+      <button class="save" type="submit">Save ${isPurchase ? "Purchase" : "Sales"} Contract</button>
+    </form>`);
+}
+
+function fillContractProduct(){
+  const id = document.getElementById("contractProduct")?.value;
+  const p = products.find(x=>x.id===id);
+  if (!p) return;
+  const sku = document.getElementById("contractSku");
+  const cat = document.getElementById("contractCategory");
+  const price = document.getElementById("contractPrice");
+  if (sku) sku.value = p.sku || "";
+  if (cat) cat.value = p.category || "";
+  if (price && !num(price.value)) price.value = num(p.sellPrice || p.buyPrice || 0);
+  updateContractTotal();
+}
+
+function updateContractTotal(){
+  const qty = Math.max(0,num(document.getElementById("contractQty")?.value));
+  const price = Math.max(0,num(document.getElementById("contractPrice")?.value));
+  const box = document.getElementById("contractTotalPreview");
+  if (box) box.textContent = money(qty*price);
+}
+
+function saveContract(event,type){
+  event.preventDefault();
+  const party = document.getElementById("contractParty")?.value.trim();
+  if (!party){ toast("Party name is required"); return false; }
+  const qty = Math.floor(num(document.getElementById("contractQty")?.value));
+  const price = Math.max(0,num(document.getElementById("contractPrice")?.value));
+  if (qty < 1 || price <= 0){ toast("Enter a valid quantity and price"); return false; }
+
+  const date = document.getElementById("contractDate")?.value || new Date().toISOString().slice(0,10);
+  const productId = document.getElementById("contractProduct")?.value || "";
+  const product = products.find(p=>p.id===productId);
+  const c = {
+    id: makeId("contract"),
+    type,
+    contractNo: contractNumber(type),
+    date: new Date(`${date}T12:00:00`).toISOString(),
+    businessName: "Stockly Business",
+    partyName: party,
+    supplierName: type === "purchase" ? party : "",
+    customerName: type === "sale" ? party : "",
+    company: document.getElementById("contractCompany")?.value.trim() || "",
+    phone: document.getElementById("contractPhone")?.value.trim() || "",
+    address: document.getElementById("contractAddress")?.value.trim() || "",
+    productId,
+    productName: product ? product.name : (document.getElementById("contractProduct")?.selectedOptions[0]?.textContent || "Custom Product").replace(/\s·\s.*$/,""),
+    sku: document.getElementById("contractSku")?.value.trim() || (product?.sku || ""),
+    category: document.getElementById("contractCategory")?.value.trim() || (product?.category || ""),
+    quantity: qty,
+    unitPrice: price,
+    paymentTerms: document.getElementById("contractPayment")?.value.trim() || "",
+    deliveryDate: document.getElementById("contractDeliveryDate")?.value || "",
+    deliveryLocation: document.getElementById("contractDeliveryLocation")?.value.trim() || "",
+    warranty: document.getElementById("contractWarranty")?.value.trim() || "",
+    otherTerms: document.getElementById("contractOtherTerms")?.value.trim() || "",
+    createdAt: new Date().toISOString()
+  };
+  contracts.unshift(c);
+  saveContracts();
+  closeModal();
+  renderContracts();
+  toast(`✅ ${contractTypeLabel(type)} saved`);
+  setTimeout(()=>openContract(c.id),120);
+  return false;
+}
+
+function findContract(id){ return contracts.find(c=>c.id===id); }
+
+function openContract(id){
+  const c = findContract(id);
+  if (!c){ toast("Contract not found"); return; }
+  const isPurchase = c.type === "purchase";
+  const total = contractTotal(c);
+  const partyLabel = isPurchase ? "Supplier" : "Customer";
+  const yourLabel = isPurchase ? "Buyer (Your Business)" : "Seller (Your Business)";
+  const partyName = isPurchase ? c.supplierName : c.customerName;
+  showModal(`${esc(contractTypeLabel(c.type))} · ${esc(c.contractNo)}`, `
+    <div id="contractPrintArea" class="contract-preview">
+      <div class="contract-preview-head ${isPurchase ? "" : "sale-head"}">
+        <div><h2>Stockly</h2><p>Smart Inventory Manager</p></div>
+        <div style="text-align:right"><strong>${esc(contractTypeLabel(c.type))}</strong><p>${esc(c.contractNo)} · ${esc(formatDate(c.date))}</p></div>
+      </div>
+      <div class="contract-doc">
+        <div class="contract-section"><div class="contract-section-title">1. Parties Information</div><div class="contract-section-body contract-two">
+          <div><strong>${esc(yourLabel)}</strong><div class="contract-kv"><b>Business</b><span>${esc(c.businessName)}</span></div><div class="contract-kv"><b>Contact</b><span>—</span></div></div>
+          <div><strong>${esc(partyLabel)}</strong><div class="contract-kv"><b>Name</b><span>${esc(partyName)}</span></div><div class="contract-kv"><b>Company</b><span>${esc(c.company || "—")}</span></div><div class="contract-kv"><b>Phone</b><span>${esc(c.phone || "—")}</span></div><div class="contract-kv"><b>Address</b><span>${esc(c.address || "—")}</span></div></div>
+        </div></div>
+        <div class="contract-section"><div class="contract-section-title">2. Product Details</div><div class="contract-section-body">
+          <table class="contract-items"><thead><tr><th>No.</th><th>Product</th><th>SKU</th><th>Category</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead><tbody><tr><td>1</td><td>${esc(c.productName)}</td><td>${esc(c.sku || "—")}</td><td>${esc(c.category || "—")}</td><td>${esc(c.quantity)}</td><td>${money(c.unitPrice)}</td><td>${money(total)}</td></tr></tbody></table>
+          <div class="contract-total-line">Total Amount: ${money(total)}</div>
+        </div></div>
+        <div class="contract-section"><div class="contract-section-title">3. Terms & Conditions</div><div class="contract-section-body">
+          <div class="contract-kv"><b>Payment Terms</b><span>${esc(c.paymentTerms || "—")}</span></div>
+          <div class="contract-kv"><b>Delivery Date</b><span>${esc(c.deliveryDate ? formatDate(c.deliveryDate) : "—")}</span></div>
+          <div class="contract-kv"><b>Location</b><span>${esc(c.deliveryLocation || "—")}</span></div>
+          <div class="contract-kv"><b>Warranty</b><span>${esc(c.warranty || "—")}</span></div>
+          <div class="contract-kv"><b>Other Terms</b><span>${esc(c.otherTerms || "—")}</span></div>
+        </div></div>
+        <div class="contract-section"><div class="contract-section-title">4. Signatures</div><div class="contract-section-body contract-signatures">
+          <div><strong>For Stockly Business</strong><div class="contract-sign"></div><span class="contract-muted">Authorized Signatory</span><br><span class="contract-muted">Date: ${esc(formatDate(c.date))}</span></div>
+          <div><strong>For ${esc(partyName)}</strong><div class="contract-sign"></div><span class="contract-muted">Authorized Signatory</span><br><span class="contract-muted">Date: ${esc(formatDate(c.date))}</span></div>
+        </div></div>
+      </div>
+      <div class="contract-foot"><span>Stockly · Smart Business. Better Control.</span><span>${esc(c.contractNo)}</span></div>
+    </div>
+    <div class="contract-preview-actions">
+      <button type="button" class="btn-soft" onclick="printContract('${esc(c.id)}')">🖨️ Print</button>
+      <button type="button" class="btn-primary" onclick="deleteContract('${esc(c.id)}')">🗑️ Delete</button>
+    </div>`);
+}
+
+function printContract(id){
+  const c = findContract(id);
+  if (!c) return;
+  const isPurchase = c.type === "purchase";
+  const total = contractTotal(c);
+  const partyLabel = isPurchase ? "Supplier" : "Customer";
+  const yourLabel = isPurchase ? "Buyer (Your Business)" : "Seller (Your Business)";
+  const partyName = isPurchase ? c.supplierName : c.customerName;
+  const w = window.open("", "_blank", "width=900,height=1000");
+  if (!w){ toast("Allow pop-ups to print the contract"); return; }
+  w.document.write(`<!doctype html><html><head><title>${esc(contractTypeLabel(c.type))} ${esc(c.contractNo)}</title><style>body{font-family:Arial,sans-serif;color:#14213d;margin:0;padding:25px}h1,h2,h3,p{margin:0}.head{background:${isPurchase ? "#182a68" : "#075c54"};color:#fff;padding:20px;display:flex;justify-content:space-between}.section{border:1px solid #dfe5ef;border-radius:10px;margin:14px 0;overflow:hidden}.title{background:#f4f7fb;padding:9px;font-weight:bold}.body{padding:11px;font-size:12px}.two{display:grid;grid-template-columns:1fr 1fr;gap:20px}.kv{display:grid;grid-template-columns:105px 1fr;gap:6px;margin:5px 0}.items{width:100%;border-collapse:collapse;font-size:11px}.items th,.items td{border:1px solid #dfe5ef;padding:7px;text-align:left}.items th{background:#f4f7fb}.total{text-align:right;font-size:17px;font-weight:bold;margin-top:10px}.sign{display:grid;grid-template-columns:1fr 1fr;gap:35px}.line{margin-top:40px;border-bottom:1px solid #999}.foot{margin-top:18px;padding:10px;background:#f4f7fb;font-size:10px;display:flex;justify-content:space-between}@media print{body{padding:12mm}}</style></head><body>
+    <div class="head"><div><h1>Stockly</h1><p>Smart Inventory Manager</p></div><div style="text-align:right"><h2>${esc(contractTypeLabel(c.type))}</h2><p>${esc(c.contractNo)} · ${esc(formatDate(c.date))}</p></div></div>
+    <div class="section"><div class="title">1. Parties Information</div><div class="body two"><div><b>${esc(yourLabel)}</b><div class="kv"><b>Business</b><span>${esc(c.businessName)}</span></div></div><div><b>${esc(partyLabel)}</b><div class="kv"><b>Name</b><span>${esc(partyName)}</span></div><div class="kv"><b>Company</b><span>${esc(c.company||"—")}</span></div><div class="kv"><b>Phone</b><span>${esc(c.phone||"—")}</span></div><div class="kv"><b>Address</b><span>${esc(c.address||"—")}</span></div></div></div></div>
+    <div class="section"><div class="title">2. Product Details</div><div class="body"><table class="items"><tr><th>No.</th><th>Product</th><th>SKU</th><th>Category</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr><tr><td>1</td><td>${esc(c.productName)}</td><td>${esc(c.sku||"—")}</td><td>${esc(c.category||"—")}</td><td>${esc(c.quantity)}</td><td>${money(c.unitPrice)}</td><td>${money(total)}</td></tr></table><div class="total">Total Amount: ${money(total)}</div></div></div>
+    <div class="section"><div class="title">3. Terms & Conditions</div><div class="body"><div class="kv"><b>Payment</b><span>${esc(c.paymentTerms||"—")}</span></div><div class="kv"><b>Delivery</b><span>${esc(c.deliveryDate?formatDate(c.deliveryDate):"—")}</span></div><div class="kv"><b>Location</b><span>${esc(c.deliveryLocation||"—")}</span></div><div class="kv"><b>Warranty</b><span>${esc(c.warranty||"—")}</span></div><div class="kv"><b>Other Terms</b><span>${esc(c.otherTerms||"—")}</span></div></div></div>
+    <div class="section"><div class="title">4. Signatures</div><div class="body sign"><div><b>For Stockly Business</b><div class="line"></div><small>Authorized Signatory</small></div><div><b>For ${esc(partyName)}</b><div class="line"></div><small>Authorized Signatory</small></div></div></div>
+    <div class="foot"><span>Stockly · Smart Business. Better Control.</span><span>${esc(c.contractNo)}</span></div>
+    </body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(()=>w.print(),250);
+}
+
+function deleteContract(id){
+  const c=findContract(id); if(!c)return;
+  if(!confirm(`Delete ${c.contractNo}?`))return;
+  contracts=contracts.filter(x=>x.id!==id); saveContracts(); closeModal(); renderContracts(); toast("Contract deleted");
+}
+
+
 /* ================= ESCAPE CLOSE ================= */
 
 document.addEventListener(
@@ -5240,6 +5406,7 @@ function startStockly() {
   renderReports();
 
   renderMeetings();
+  renderContracts();
 
 
   page("home");
@@ -5264,6 +5431,7 @@ function refreshAll() {
   renderReports();
 
   renderMeetings();
+  renderContracts();
 
 }
 
