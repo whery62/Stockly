@@ -321,17 +321,10 @@ function refreshPage(name) {
   }
 
 
-  if (name === "records") {
-    renderRecordsCenter();
-  }
-
-  if (name === "contracts") {
-    renderContractsCenter();
-  }
-
   if (name === "reports") {
+
     renderReports();
-    renderReportCenter();
+
   }
 
   if (name === "roughbook") {
@@ -589,6 +582,12 @@ loadData();
    ========================================================= */
 
 
+
+/* ================= GST HELPERS ================= */
+function gstRateOptions(selected=0){ return [0,5,12,18,28].map(r=>`<option value="${r}" ${num(selected)===r?"selected":""}>${r}%</option>`).join(""); }
+function gstBreakup(taxable,rate,type){ const amount=Math.max(0,num(taxable)); const gst=Math.round(amount*Math.max(0,num(rate))/100*100)/100; if(type==="IGST") return {gst,cgst:0,sgst:0,igst:gst}; if(type==="CGST_SGST"){ const cgst=Math.round(gst/2*100)/100; return {gst,cgst,sgst:Math.round((gst-cgst)*100)/100,igst:0}; } return {gst:0,cgst:0,sgst:0,igst:0}; }
+function gstTypeLabel(type){ return type==="IGST"?"IGST":type==="CGST_SGST"?"CGST + SGST":"No GST"; }
+
 /* ================= PRODUCT MODAL ================= */
 
 function openProduct(productId = null) {
@@ -652,17 +651,16 @@ function openProduct(productId = null) {
 
 
         <div class="field">
-
-          <label>
-            Category
-          </label>
-
-          <input
-            id="productCategory"
-            value="${esc(product?.category || "")}"
-            placeholder="e.g. Drinks"
-          >
-
+          <label>Category</label>
+          <input id="productCategory" value="${esc(product?.category || "")}" placeholder="e.g. Drinks">
+        </div>
+        <div class="field">
+          <label>HSN / SAC Code</label>
+          <input id="productHsn" value="${esc(product?.hsnCode || "")}" placeholder="e.g. 2202">
+        </div>
+        <div class="field">
+          <label>GST Rate</label>
+          <select id="productGstRate">${gstRateOptions(product?.gstRate || 0)}</select>
         </div>
 
 
@@ -775,10 +773,9 @@ function saveProduct(event, productId) {
 
 
   const category =
-    document
-      .getElementById("productCategory")
-      .value
-      .trim();
+    document.getElementById("productCategory").value.trim();
+  const hsnCode = document.getElementById("productHsn")?.value.trim() || "";
+  const gstRate = Math.max(0, num(document.getElementById("productGstRate")?.value));
 
 
   const stock =
@@ -882,8 +879,9 @@ function saveProduct(event, productId) {
     product.sku =
       sku;
 
-    product.category =
-      category;
+    product.category = category;
+    product.hsnCode = hsnCode;
+    product.gstRate = gstRate;
 
     product.stock =
       stock;
@@ -916,8 +914,9 @@ function saveProduct(event, productId) {
       sku:
         sku,
 
-      category:
-        category,
+      category: category,
+      hsnCode: hsnCode,
+      gstRate: gstRate,
 
       stock:
         stock,
@@ -1068,6 +1067,7 @@ function productCard(product) {
       }
 
 
+      <div style="margin-top:8px;font-size:12px;color:var(--muted);">GST: ${num(product.gstRate)}%${product.hsnCode ? ` · HSN: ${esc(product.hsnCode)}` : ""}</div>
       <div class="product-actions">
 
         <button
@@ -2512,12 +2512,10 @@ function openSale(productId = null) {
     "Make New Bill",
     `
       <form id="stocklySaleForm" onsubmit="return false" novalidate>
-        <div class="field">
-          <label>Customer / Party</label>
-          <select id="saleCustomer" onchange="updateSalePayment()">
-            ${partyOptions()}
-          </select>
-        </div>
+        <div class="field"><label>Customer / Party</label><select id="saleCustomer" onchange="updateSalePayment()">${partyOptions()}</select></div>
+        <div class="field"><label>Customer GSTIN</label><input id="saleGstin" placeholder="Optional GSTIN"></div>
+        <div class="field"><label>GST Type</label><select id="saleGstType" onchange="updateSaleSummary()"><option value="NONE">No GST</option><option value="CGST_SGST">CGST + SGST</option><option value="IGST">IGST</option></select></div>
+        <div class="field"><label>GST Rate</label><select id="saleGstRate" onchange="updateSaleSummary()">${gstRateOptions(0)}</select></div>
 
         <div style="display:flex;justify-content:space-between;align-items:center;margin:15px 0 10px;">
           <strong>Bill Items</strong>
@@ -2913,7 +2911,12 @@ function stocklyCreateBill() {
     }
 
     const safeDiscount = Math.min(discount, subtotal);
-    const total = subtotal - safeDiscount;
+    const taxable = subtotal - safeDiscount;
+    const gstRate = Math.max(0, num(document.getElementById("saleGstRate")?.value));
+    const gstType = document.getElementById("saleGstType")?.value || "NONE";
+    const tax = gstBreakup(taxable, gstRate, gstType);
+    const total = taxable + tax.gst;
+    const customerGstin = document.getElementById("saleGstin")?.value.trim() || "";
 
     if (total <= 0) {
       alert("Stockly: Sale total must be greater than ₹0.");
@@ -2932,6 +2935,8 @@ function stocklyCreateBill() {
       customerName: party ? (party.name || "Customer") : "Walk-in Customer",
       customerPhone: party ? (party.phone || "") : "",
       customerAddress: party ? (party.address || "") : "",
+      customerGstin,
+      gstRate, gstType, cgst: tax.cgst, sgst: tax.sgst, igst: tax.igst, gst: tax.gst,
       items: preparedItems,
       subtotal,
       discount: safeDiscount,
@@ -3100,6 +3105,9 @@ function openInvoice(saleId) {
             <span>Discount</span>
             <strong>- ${money(sale.discount)}</strong>
           </div>
+          ${num(sale.cgst)>0 ? `<div class="summary-row"><span>CGST</span><strong>${money(sale.cgst)}</strong></div>` : ""}
+          ${num(sale.sgst)>0 ? `<div class="summary-row"><span>SGST</span><strong>${money(sale.sgst)}</strong></div>` : ""}
+          ${num(sale.igst)>0 ? `<div class="summary-row"><span>IGST</span><strong>${money(sale.igst)}</strong></div>` : ""}
 
           <div class="summary-row" style="font-size:20px;font-weight:900;margin-top:8px;">
             <span>TOTAL</span>
@@ -3349,10 +3357,10 @@ function openPurchase(productId = null) {
           <input id="purchaseSupplier" placeholder="Supplier / distributor name">
         </div>
 
-        <div class="field">
-          <label>Supplier Phone</label>
-          <input id="purchaseSupplierPhone" placeholder="Optional phone number">
-        </div>
+        <div class="field"><label>Supplier Phone</label><input id="purchaseSupplierPhone" placeholder="Optional phone number"></div>
+        <div class="field"><label>Supplier GSTIN</label><input id="purchaseGstin" placeholder="Optional GSTIN"></div>
+        <div class="field"><label>GST Type</label><select id="purchaseGstType" onchange="updatePurchaseSummary()"><option value="NONE">No GST</option><option value="CGST_SGST">CGST + SGST</option><option value="IGST">IGST</option></select></div>
+        <div class="field"><label>GST Rate</label><select id="purchaseGstRate" onchange="updatePurchaseSummary()">${gstRateOptions(0)}</select></div>
 
         <div style="display:flex;justify-content:space-between;align-items:center;margin:15px 0 10px;">
           <strong>Products</strong>
@@ -3505,28 +3513,18 @@ function renderPurchaseItems() {
   `).join("");
 }
 
-function calculatePurchase() {
-  let subtotal = 0;
-  purchaseItems.forEach(item => {
-    subtotal += Math.max(0, num(item.quantity)) * Math.max(0, num(item.price));
-  });
-
-  const discount = Math.max(0, num(document.getElementById("purchaseDiscount")?.value));
-  const total = Math.max(0, subtotal - discount);
-  return { subtotal, discount, total };
+function calculatePurchase(){
+  let subtotal=0; purchaseItems.forEach(item=>subtotal+=Math.max(0,num(item.quantity))*Math.max(0,num(item.price)));
+  const discount=Math.max(0,num(document.getElementById("purchaseDiscount")?.value));
+  const taxable=Math.max(0,subtotal-Math.min(discount,subtotal));
+  const gstRate=Math.max(0,num(document.getElementById("purchaseGstRate")?.value));
+  const gstType=document.getElementById("purchaseGstType")?.value||"NONE";
+  const tax=gstBreakup(taxable,gstRate,gstType);
+  return {subtotal,discount,taxable,gstRate,gstType,...tax,total:taxable+tax.gst};
 }
-
-function updatePurchaseSummary() {
-  const box = document.getElementById("purchaseSummary");
-  if (!box) return;
-
-  const data = calculatePurchase();
-
-  box.innerHTML = `
-    <div class="summary-row"><span>Subtotal</span><strong>${money(data.subtotal)}</strong></div>
-    <div class="summary-row"><span>Discount</span><strong>- ${money(data.discount)}</strong></div>
-    <div class="summary-row" style="font-size:18px;font-weight:800;"><span>Total</span><strong>${money(data.total)}</strong></div>
-  `;
+function updatePurchaseSummary(){
+  const box=document.getElementById("purchaseSummary");if(!box)return;const d=calculatePurchase();
+  box.innerHTML=`<div class="summary-row"><span>Subtotal</span><strong>${money(d.subtotal)}</strong></div><div class="summary-row"><span>Discount</span><strong>- ${money(d.discount)}</strong></div>${d.cgst?`<div class="summary-row"><span>CGST</span><strong>${money(d.cgst)}</strong></div>`:""}${d.sgst?`<div class="summary-row"><span>SGST</span><strong>${money(d.sgst)}</strong></div>`:""}${d.igst?`<div class="summary-row"><span>IGST</span><strong>${money(d.igst)}</strong></div>`:""}<div class="summary-row" style="font-size:18px;font-weight:800"><span>Total</span><strong>${money(d.total)}</strong></div>`;
 }
 
 
@@ -3543,6 +3541,7 @@ function savePurchase(event) {
 
     const supplier = document.getElementById("purchaseSupplier")?.value.trim() || "";
     const supplierPhone = document.getElementById("purchaseSupplierPhone")?.value.trim() || "";
+    const supplierGstin = document.getElementById("purchaseGstin")?.value.trim() || "";
     const paymentMethod = document.getElementById("purchasePayment")?.value || "Cash";
     const note = document.getElementById("purchaseNote")?.value.trim() || "";
 
@@ -3589,9 +3588,17 @@ function savePurchase(event) {
       billNo: "PUR-" + Date.now().toString().slice(-8),
       supplier,
       supplierPhone,
+      supplierGstin,
       items: preparedItems,
       subtotal: data.subtotal,
       discount: data.discount,
+      taxable: data.taxable,
+      gstRate: data.gstRate,
+      gstType: data.gstType,
+      cgst: data.cgst,
+      sgst: data.sgst,
+      igst: data.igst,
+      gst: data.gst,
       total: data.total,
       paymentMethod,
       note,
@@ -5378,20 +5385,6 @@ function stkOpenModule(name){
   if(name==="Management"){stkManagement();return;}
   if(name==="Delete"){stkDeleteManager();return;}
   if(STK_MODULES.print.items.some(x=>x[0]===name)){stkPrintModule(name);return;}
-}
-
-function renderRecordsCenter(){
-  const host=document.getElementById("recordsCenter");
-  if(!host) return;
-  const items=STK_MODULES.records.items;
-  host.innerHTML=items.map(x=>`<button type="button" class="business-card" onclick="stkOpenModule('${stkSafe(x[0])}')"><div class="bi">${x[1]}</div><strong>${stkSafe(x[0])}</strong><small>${stkSafe(x[2])}</small></button>`).join("");
-}
-
-function renderContractsCenter(){
-  const host=document.getElementById("contractsCenter");
-  if(!host) return;
-  const items=STK_MODULES.contracts.items;
-  host.innerHTML=items.map(x=>`<button type="button" class="business-card" onclick="stkOpenModule('${stkSafe(x[0])}')"><div class="bi">${x[1]}</div><strong>${stkSafe(x[0])}</strong><small>${stkSafe(x[2])}</small></button>`).join("");
 }
 
 function renderReportCenter(){

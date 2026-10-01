@@ -1,1 +1,3 @@
-Stockly V13 VS Code build. Open this folder in VS Code and run index.html with Live Server. Keep index.html and app.js in the same folder.
+Stockly GST-ready VS Code project.
+Open the folder in VS Code and use Live Server.
+Features added: product GST rate + HSN, sales GSTIN/GST type/rate with CGST/SGST/IGST calculation, purchase GSTIN/GST type/rate with GST calculation, and GST shown on invoices.
