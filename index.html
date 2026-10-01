@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <meta name="theme-color" content="#5b5ce2">
-<title>Stockly V5 — Final Billing Fix</title>
+<title>Stockly — Business Suite</title>
 
 <style>
 
@@ -645,6 +645,8 @@ body.dark .danger-setting button{
 
 .bottom-nav{
   position:fixed;
+  overflow-x:auto;
+  justify-content:flex-start;
   bottom:0;
   left:0;
   right:0;
@@ -662,11 +664,16 @@ body.dark .bottom-nav{
 }
 
 .nav-inner{
-  width:100%;
+  width:max-content;
+  min-width:100%;
   max-width:720px;
   display:flex;
   justify-content:space-around;
+  overflow-x:auto;
+  scrollbar-width:none;
 }
+.nav-inner::-webkit-scrollbar{display:none}
+.nav-btn{min-width:92px}
 
 .nav-btn{
   flex:1;
@@ -761,16 +768,16 @@ body.dark .bottom-nav{
 @media(max-width:430px){.rough-actions{grid-template-columns:1fr}.rough-detail-grid{grid-template-columns:1fr}}
 
 
-/* ================= CONTRACTS ================= */
-.contract-hero{background:linear-gradient(135deg,#182a68,#5b5ce2);color:#fff;border-radius:22px;padding:20px;margin-bottom:16px;box-shadow:0 14px 32px rgba(55,67,180,.24)}
-.contract-hero h3{font-size:21px;margin-bottom:5px}.contract-hero p{font-size:13px;opacity:.86;line-height:1.5}
-.contract-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:15px 0}
-.contract-card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:var(--shadow)}
-.contract-card-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.contract-badge{padding:6px 9px;border-radius:999px;font-size:10px;font-weight:850;white-space:nowrap}.contract-badge.purchase{background:#edf2ff;color:#4057c9}.contract-badge.sale{background:#e9f8f2;color:var(--green)}
-.contract-number{font-size:12px;color:var(--muted);margin-top:4px}.contract-parties{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.contract-party{background:var(--bg);border-radius:14px;padding:11px}.contract-party span{display:block;color:var(--muted);font-size:10px;margin-bottom:4px}.contract-party strong{font-size:13px}
-.contract-summary{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);margin-top:13px;padding-top:12px}.contract-total{font-size:17px;font-weight:850}.contract-actions-row{display:flex;gap:8px;margin-top:12px}.contract-actions-row button{flex:1;padding:10px;border-radius:11px;font-size:12px;font-weight:750}.contract-preview{background:#fff;color:#14213d;border-radius:18px;overflow:hidden;border:1px solid #dfe5ef}.contract-preview-head{padding:20px;background:linear-gradient(135deg,#182a68,#5b5ce2);color:#fff;display:flex;justify-content:space-between;gap:15px}.contract-preview-head.sale-head{background:linear-gradient(135deg,#075c54,#18a673)}.contract-preview-head h2{font-size:22px;margin-bottom:4px}.contract-preview-head p{font-size:12px;opacity:.86}.contract-doc{padding:16px}.contract-section{border:1px solid #dfe5ef;border-radius:12px;overflow:hidden;margin-bottom:12px}.contract-section-title{padding:9px 11px;background:#f4f7fb;font-weight:800;font-size:12px}.contract-section-body{padding:11px;font-size:11px}.contract-two{display:grid;grid-template-columns:1fr 1fr;gap:14px}.contract-kv{display:grid;grid-template-columns:105px 1fr;gap:5px;margin:4px 0}.contract-kv b{font-weight:700}.contract-items{width:100%;border-collapse:collapse;font-size:10px}.contract-items th,.contract-items td{border:1px solid #dfe5ef;padding:7px;text-align:left}.contract-items th{background:#f4f7fb}.contract-total-line{text-align:right;font-size:16px;font-weight:850;margin-top:9px}.contract-signatures{display:grid;grid-template-columns:1fr 1fr;gap:25px}.contract-sign{padding-top:35px;border-bottom:1px solid #9aa4b5;margin-bottom:7px}.contract-foot{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:13px 16px;background:#f4f7fb;font-size:10px;color:#5e6879}.contract-preview-actions{display:flex;gap:8px;margin-top:12px}.contract-preview-actions button{flex:1;padding:12px;border-radius:12px;font-weight:800}.contract-muted{color:#687388}.contract-filter{display:flex;gap:8px;overflow:auto;margin-bottom:12px}.contract-filter button{padding:9px 13px;border-radius:999px;background:var(--card);border:1px solid var(--line);color:var(--text);white-space:nowrap}.contract-filter button.active{background:var(--primary);border-color:var(--primary);color:#fff}
-@media(max-width:430px){.contract-actions{grid-template-columns:1fr}.contract-parties,.contract-two,.contract-signatures{grid-template-columns:1fr}.contract-preview-head{flex-direction:column}.contract-kv{grid-template-columns:90px 1fr}}
-@media print{body{background:#fff!important;padding:0!important}.contract-print-only{display:block!important}.contract-preview{border:0!important}.contract-preview-actions,.modal-head,.bottom-nav,.floating{display:none!important}}
+/* ================= BUSINESS SUITE ================= */
+.business-hero{background:linear-gradient(135deg,#24264f,#5b5ce2);color:#fff;border-radius:22px;padding:20px;margin-bottom:16px;box-shadow:0 14px 32px rgba(82,83,220,.22)}
+.business-hero h3{font-size:21px;margin-bottom:5px}.business-hero p{font-size:13px;opacity:.86;line-height:1.5}
+.business-section{margin:20px 0 10px;font-size:17px}.business-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.business-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:15px;text-align:left;color:var(--text);box-shadow:var(--shadow);min-height:92px}
+.business-card .bi{font-size:23px;margin-bottom:8px}.business-card strong{display:block;font-size:13px}.business-card small{display:block;color:var(--muted);font-size:10px;margin-top:3px;line-height:1.35}
+.business-tools-search{margin:0 0 15px}.business-list{display:grid;gap:10px}.business-row{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:13px;box-shadow:var(--shadow)}
+.business-row-top{display:flex;justify-content:space-between;gap:10px}.business-row h4{font-size:14px}.business-row p{color:var(--muted);font-size:11px;margin-top:4px}.business-row strong{font-size:14px}.business-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.business-actions button{padding:8px 10px;border-radius:10px;background:var(--bg);color:var(--text);border:1px solid var(--line);font-size:11px}.business-actions button.primary{background:var(--primary);color:#fff;border-color:var(--primary)}.business-actions button.danger{color:var(--red)}
+.business-summary{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}.business-summary .stat{margin:0}.business-report{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:var(--shadow);margin-bottom:12px}.business-report h3{font-size:17px;margin-bottom:10px}.business-report table{width:100%;border-collapse:collapse;font-size:11px}.business-report th,.business-report td{text-align:left;padding:9px 6px;border-bottom:1px solid var(--line)}.business-report th{color:var(--muted)}
+@media(max-width:430px){.business-grid{grid-template-columns:1fr}.business-summary{grid-template-columns:1fr 1fr}}
 
 </style>
 </head>
@@ -1127,10 +1134,21 @@ body.dark .bottom-nav{
 >
 
   <div class="welcome">
-    <h2>Invoices 🧾</h2>
+    <h2>Bill Account 💼</h2>
     <p>Access all your sales and purchase invoices.</p>
   </div>
 
+  <div class="section-head"><h3>Business Setup</h3></div>
+  <div class="business-grid" style="margin-bottom:16px;">
+    <button type="button" class="business-card" onclick="stkOpenGroup('records')">
+      <div class="bi">📚</div><strong>Records</strong><small>Parties, products, employees, expenses, banks and other master records.</small>
+    </button>
+    <button type="button" class="business-card" onclick="stkOpenGroup('contracts')">
+      <div class="bi">📜</div><strong>Contracts</strong><small>Sales Contract and Purchase Contract with GST fields.</small>
+    </button>
+  </div>
+
+  <div class="section-head"><h3>Invoices & Purchases</h3></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:15px;">
     <button id="invoiceFilterAll" type="button" class="save" onclick="setInvoiceFilter('all')">All Invoices</button>
     <button id="invoiceFilterSales" type="button" class="secondary" onclick="setInvoiceFilter('sale')">Sales</button>
@@ -1150,6 +1168,26 @@ body.dark .bottom-nav{
 </section>
 
 
+<!-- ================= RECORDS ================= -->
+
+<section id="records" class="page">
+  <div class="welcome">
+    <h2>Records 📚</h2>
+    <p>Manage your business master records and accounts.</p>
+  </div>
+  <div id="recordsCenter" class="business-grid"></div>
+</section>
+
+<!-- ================= CONTRACTS ================= -->
+
+<section id="contracts" class="page">
+  <div class="welcome">
+    <h2>Contracts 📜</h2>
+    <p>Sales and purchase contracts with GST details.</p>
+  </div>
+  <div id="contractsCenter" class="business-grid"></div>
+</section>
+
 <!-- ================= REPORTS ================= -->
 
 <section
@@ -1158,95 +1196,21 @@ body.dark .bottom-nav{
 >
 
   <div class="welcome">
-
-    <h2>
-      Reports 📊
-    </h2>
-
-    <p>
-      Track your business performance.
-    </p>
-
+    <h2>Reports & Print 🖨️</h2>
+    <p>Open any report, ledger or print-ready business statement.</p>
   </div>
-
 
   <div class="report-grid">
-
-    <div class="report-card">
-
-      <div class="report-title">
-        Revenue
-      </div>
-
-      <div
-        class="report-value"
-        id="reportRevenue"
-      >
-        ₹0
-      </div>
-
-    </div>
-
-
-    <div class="report-card">
-
-      <div class="report-title">
-        Profit
-      </div>
-
-      <div
-        class="report-value"
-        id="reportProfit"
-      >
-        ₹0
-      </div>
-
-    </div>
-
-
-    <div class="report-card">
-
-      <div class="report-title">
-        Inventory
-      </div>
-
-      <div
-        class="report-value"
-        id="reportInventory"
-      >
-        ₹0
-      </div>
-
-    </div>
-
-
-    <div class="report-card">
-
-      <div class="report-title">
-        Customer Credit
-      </div>
-
-      <div
-        class="report-value"
-        id="reportCredit"
-      >
-        ₹0
-      </div>
-
-    </div>
-
+    <div class="report-card"><div class="report-title">Revenue</div><div class="report-value" id="reportRevenue">₹0</div></div>
+    <div class="report-card"><div class="report-title">Profit</div><div class="report-value" id="reportProfit">₹0</div></div>
+    <div class="report-card"><div class="report-title">Inventory</div><div class="report-value" id="reportInventory">₹0</div></div>
+    <div class="report-card"><div class="report-title">Customer Credit</div><div class="report-value" id="reportCredit">₹0</div></div>
   </div>
 
+  <div class="section-head"><h3>All Reports</h3></div>
+  <div id="reportCenter" class="business-grid"></div>
 
-  <div class="section-head">
-
-    <h3>
-      Transaction History
-    </h3>
-
-  </div>
-
-
+  <div class="section-head"><h3>Transaction History</h3></div>
   <div id="transactionList"></div>
 
 </section>
@@ -1444,33 +1408,6 @@ body.dark .bottom-nav{
 </section>
 
 
-<!-- ================= CONTRACTS ================= -->
-<section id="contracts" class="page">
-  <div class="welcome">
-    <h2>Contracts 📄</h2>
-    <p>Create, save and print purchase and sales agreements.</p>
-  </div>
-
-  <div class="contract-hero">
-    <h3>Keep every deal documented.</h3>
-    <p>Make a professional contract for a supplier purchase or a customer sale, then save it with your Stockly data.</p>
-  </div>
-
-  <div class="contract-actions">
-    <button class="save" type="button" onclick="openContractForm('purchase')">🛒 Purchase Contract</button>
-    <button class="secondary" type="button" onclick="openContractForm('sale')">🏷️ Sales Contract</button>
-  </div>
-
-  <div class="contract-filter">
-    <button class="active" data-contract-filter="all" onclick="setContractFilter('all',this)">All</button>
-    <button data-contract-filter="purchase" onclick="setContractFilter('purchase',this)">Purchases</button>
-    <button data-contract-filter="sale" onclick="setContractFilter('sale',this)">Sales</button>
-  </div>
-
-  <input id="contractSearch" class="search" placeholder="🔎 Search contract, supplier or customer..." oninput="renderContracts()">
-  <div id="contractList"></div>
-</section>
-
 <!-- ================= BOTTOM NAVIGATION ================= -->
 
 <nav class="bottom-nav">
@@ -1547,13 +1484,19 @@ body.dark .bottom-nav{
       <small>Rough Book</small>
     </button>
 
-    <button
-      class="nav-btn"
-      data-page="contracts"
-      onclick="page('contracts')"
-    >
-      <span>📄</span>
+    <button class="nav-btn" data-page="records" onclick="page('records')">
+      <span>📚</span>
+      <small>Records</small>
+    </button>
+
+    <button class="nav-btn" data-page="contracts" onclick="page('contracts')">
+      <span>📜</span>
       <small>Contracts</small>
+    </button>
+
+    <button class="nav-btn" data-page="invoices" onclick="page('invoices')">
+      <span>💼</span>
+      <small>Bill Account</small>
     </button>
 
     <button
@@ -1628,7 +1571,8 @@ body.dark .bottom-nav{
 </div>
 
 
-<script src="app.js"></script>
+<script src="./app.js" defer></script>
+
 
 </div>
 

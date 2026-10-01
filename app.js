@@ -1,3 +1,4 @@
+
 /* =========================================================
    STOCKLY V5 — PART 2
    DATA + CORE ENGINE + NAVIGATION
@@ -8,15 +9,12 @@ const TRANSACTION_KEY = "stockly_transactions";
 const PARTY_KEY = "stockly_parties";
 const DARK_KEY = "stockly_dark";
 const MEETING_KEY = "stockly_meetings";
-const CONTRACT_KEY = "stockly_contracts";
 
 
 let products = [];
 let transactions = [];
 let parties = [];
 let meetings = [];
-let contracts = [];
-let contractFilter = "all";
 
 
 /* ================= DATA LOADING ================= */
@@ -68,13 +66,6 @@ function loadData() {
     meetings = [];
   }
 
-  try {
-    contracts = JSON.parse(localStorage.getItem(CONTRACT_KEY)) || [];
-    if (!Array.isArray(contracts)) contracts = [];
-  } catch (error) {
-    contracts = [];
-  }
-
 }
 
 
@@ -111,10 +102,6 @@ function saveParties() {
 
 function saveMeetings() {
   localStorage.setItem(MEETING_KEY, JSON.stringify(meetings));
-}
-
-function saveContracts() {
-  localStorage.setItem(CONTRACT_KEY, JSON.stringify(contracts));
 }
 
 
@@ -334,22 +321,22 @@ function refreshPage(name) {
   }
 
 
+  if (name === "records") {
+    renderRecordsCenter();
+  }
+
+  if (name === "contracts") {
+    renderContractsCenter();
+  }
+
   if (name === "reports") {
-
     renderReports();
-
+    renderReportCenter();
   }
 
   if (name === "roughbook") {
 
     renderMeetings();
-
-  }
-
-
-  if (name === "contracts") {
-
-    renderContracts();
 
   }
 
@@ -4544,10 +4531,7 @@ function backupData() {
       parties,
 
     meetings:
-      meetings,
-
-    contracts:
-      contracts
+      meetings
 
   };
 
@@ -4700,11 +4684,6 @@ function restoreData(event) {
             ? data.meetings
             : [];
 
-        contracts =
-          Array.isArray(data.contracts)
-            ? data.contracts
-            : [];
-
 
         saveProducts();
 
@@ -4712,7 +4691,6 @@ function restoreData(event) {
 
         saveParties();
         saveMeetings();
-        saveContracts();
 
 
         event.target.value =
@@ -4808,10 +4786,6 @@ function resetData() {
     MEETING_KEY
   );
 
-  localStorage.removeItem(
-    CONTRACT_KEY
-  );
-
 
   products = [];
 
@@ -4819,7 +4793,6 @@ function resetData() {
 
   parties = [];
   meetings = [];
-  contracts = [];
 
 
   toast(
@@ -5094,251 +5067,6 @@ function deleteMeeting(id){
   meetings=meetings.filter(x=>x.id!==id);saveMeetings();closeModal();renderMeetings();toast("Meeting deleted");
 }
 
-
-
-/* ================= CONTRACTS ================= */
-
-function contractTypeLabel(type){
-  return type === "purchase" ? "Purchase Contract" : "Sales Contract";
-}
-
-function contractPrefix(type){
-  return type === "purchase" ? "PC" : "SC";
-}
-
-function contractNumber(type){
-  const year = new Date().getFullYear();
-  const count = contracts.filter(c => c.type === type).length + 1;
-  return `${contractPrefix(type)}-${year}-${String(count).padStart(4,"0")}`;
-}
-
-function contractPartyLabel(c){
-  return c.type === "purchase" ? (c.supplierName || "Supplier") : (c.customerName || "Customer");
-}
-
-function contractTotal(c){
-  return Math.max(0, num(c.quantity)) * Math.max(0, num(c.unitPrice));
-}
-
-function renderContracts(){
-  const list = document.getElementById("contractList");
-  if (!list) return;
-  const search = (document.getElementById("contractSearch")?.value || "").trim().toLowerCase();
-  let rows = (Array.isArray(contracts) ? contracts : []).slice().sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
-  rows = rows.filter(c => {
-    const typeOk = contractFilter === "all" || c.type === contractFilter;
-    const hay = [c.contractNo,c.supplierName,c.customerName,c.businessName,c.productName,c.company].join(" ").toLowerCase();
-    return typeOk && (!search || hay.includes(search));
-  });
-
-  if (!rows.length){
-    list.innerHTML = `<div class="empty"><div style="font-size:42px;margin-bottom:10px">📄</div><strong>No contracts yet</strong><p>Create a purchase or sales contract to keep your deals documented.</p></div>`;
-    return;
-  }
-
-  list.innerHTML = rows.map(c => {
-    const party = contractPartyLabel(c);
-    const total = contractTotal(c);
-    const badge = c.type === "purchase" ? "purchase" : "sale";
-    return `<div class="contract-card">
-      <div class="contract-card-top">
-        <div style="min-width:0"><strong style="font-size:16px">${esc(contractTypeLabel(c.type))}</strong><div class="contract-number">${esc(c.contractNo)} · ${esc(formatDate(c.date))}</div></div>
-        <span class="contract-badge ${badge}">${c.type === "purchase" ? "PURCHASE" : "SALE"}</span>
-      </div>
-      <div class="contract-parties">
-        <div class="contract-party"><span>${c.type === "purchase" ? "Supplier" : "Customer"}</span><strong>${esc(party)}</strong></div>
-        <div class="contract-party"><span>Product</span><strong>${esc(c.productName || "—")}</strong></div>
-      </div>
-      <div class="contract-summary"><span class="contract-muted">${esc(String(c.quantity || 0))} units</span><span class="contract-total">${money(total)}</span></div>
-      <div class="contract-actions-row"><button class="btn-soft" type="button" onclick="openContract('${esc(c.id)}')">Open</button><button class="btn-primary" type="button" onclick="printContract('${esc(c.id)}')">Print</button></div>
-    </div>`;
-  }).join("");
-}
-
-function setContractFilter(type, button){
-  contractFilter = type;
-  document.querySelectorAll("[data-contract-filter]").forEach(b=>b.classList.remove("active"));
-  if (button) button.classList.add("active");
-  renderContracts();
-}
-
-function openContractForm(type){
-  const isPurchase = type === "purchase";
-  const today = new Date().toISOString().slice(0,10);
-  const productOptions = products.length
-    ? products.map(p => `<option value="${esc(p.id)}">${esc(p.name)}${p.sku ? " · " + esc(p.sku) : ""}</option>`).join("")
-    : `<option value="">No products added yet</option>`;
-
-  showModal(isPurchase ? "New Purchase Contract" : "New Sales Contract", `
-    <form onsubmit="return saveContract(event,'${esc(type)}')">
-      <div class="field"><label>${isPurchase ? "Supplier Name" : "Customer Name"} *</label><input id="contractParty" required placeholder="e.g. ABC Traders"></div>
-      <div class="field"><label>Business / Company</label><input id="contractCompany" placeholder="Business name"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="field"><label>Phone</label><input id="contractPhone" type="tel" placeholder="Phone number"></div>
-        <div class="field"><label>Contract Date</label><input id="contractDate" type="date" value="${today}"></div>
-      </div>
-      <div class="field"><label>Address</label><textarea id="contractAddress" rows="2" placeholder="Full address"></textarea></div>
-      <div class="field"><label>Product</label><select id="contractProduct" onchange="fillContractProduct()"><option value="">Custom / select product</option>${productOptions}</select></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="field"><label>SKU</label><input id="contractSku" placeholder="SKU"></div>
-        <div class="field"><label>Category</label><input id="contractCategory" placeholder="Category"></div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="field"><label>Quantity</label><input id="contractQty" type="number" min="1" step="1" value="1" oninput="updateContractTotal()"></div>
-        <div class="field"><label>Unit Price (₹)</label><input id="contractPrice" type="number" min="0" step="0.01" value="0" oninput="updateContractTotal()"></div>
-      </div>
-      <div class="sale-summary"><div class="summary-row total"><span>Total Amount</span><span id="contractTotalPreview">₹0</span></div></div>
-      <div class="field"><label>Payment Terms</label><input id="contractPayment" value="${isPurchase ? "50% Advance, 50% Before Delivery" : "Full Payment (UPI / Cash / Card)"}"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="field"><label>Delivery Date</label><input id="contractDeliveryDate" type="date"></div>
-        <div class="field"><label>Delivery Location</label><input id="contractDeliveryLocation" placeholder="Delivery address"></div>
-      </div>
-      <div class="field"><label>Warranty / Return Terms</label><input id="contractWarranty" value="${isPurchase ? "As per supplier policy" : "Return/replacement within 7 days if damaged"}"></div>
-      <div class="field"><label>Other Terms</label><textarea id="contractOtherTerms" rows="4" placeholder="Add any special agreement, delivery condition, payment note, etc."></textarea></div>
-      <button class="save" type="submit">Save ${isPurchase ? "Purchase" : "Sales"} Contract</button>
-    </form>`);
-}
-
-function fillContractProduct(){
-  const id = document.getElementById("contractProduct")?.value;
-  const p = products.find(x=>x.id===id);
-  if (!p) return;
-  const sku = document.getElementById("contractSku");
-  const cat = document.getElementById("contractCategory");
-  const price = document.getElementById("contractPrice");
-  if (sku) sku.value = p.sku || "";
-  if (cat) cat.value = p.category || "";
-  if (price && !num(price.value)) price.value = num(p.sellPrice || p.buyPrice || 0);
-  updateContractTotal();
-}
-
-function updateContractTotal(){
-  const qty = Math.max(0,num(document.getElementById("contractQty")?.value));
-  const price = Math.max(0,num(document.getElementById("contractPrice")?.value));
-  const box = document.getElementById("contractTotalPreview");
-  if (box) box.textContent = money(qty*price);
-}
-
-function saveContract(event,type){
-  event.preventDefault();
-  const party = document.getElementById("contractParty")?.value.trim();
-  if (!party){ toast("Party name is required"); return false; }
-  const qty = Math.floor(num(document.getElementById("contractQty")?.value));
-  const price = Math.max(0,num(document.getElementById("contractPrice")?.value));
-  if (qty < 1 || price <= 0){ toast("Enter a valid quantity and price"); return false; }
-
-  const date = document.getElementById("contractDate")?.value || new Date().toISOString().slice(0,10);
-  const productId = document.getElementById("contractProduct")?.value || "";
-  const product = products.find(p=>p.id===productId);
-  const c = {
-    id: makeId("contract"),
-    type,
-    contractNo: contractNumber(type),
-    date: new Date(`${date}T12:00:00`).toISOString(),
-    businessName: "Stockly Business",
-    partyName: party,
-    supplierName: type === "purchase" ? party : "",
-    customerName: type === "sale" ? party : "",
-    company: document.getElementById("contractCompany")?.value.trim() || "",
-    phone: document.getElementById("contractPhone")?.value.trim() || "",
-    address: document.getElementById("contractAddress")?.value.trim() || "",
-    productId,
-    productName: product ? product.name : (document.getElementById("contractProduct")?.selectedOptions[0]?.textContent || "Custom Product").replace(/\s·\s.*$/,""),
-    sku: document.getElementById("contractSku")?.value.trim() || (product?.sku || ""),
-    category: document.getElementById("contractCategory")?.value.trim() || (product?.category || ""),
-    quantity: qty,
-    unitPrice: price,
-    paymentTerms: document.getElementById("contractPayment")?.value.trim() || "",
-    deliveryDate: document.getElementById("contractDeliveryDate")?.value || "",
-    deliveryLocation: document.getElementById("contractDeliveryLocation")?.value.trim() || "",
-    warranty: document.getElementById("contractWarranty")?.value.trim() || "",
-    otherTerms: document.getElementById("contractOtherTerms")?.value.trim() || "",
-    createdAt: new Date().toISOString()
-  };
-  contracts.unshift(c);
-  saveContracts();
-  closeModal();
-  renderContracts();
-  toast(`✅ ${contractTypeLabel(type)} saved`);
-  setTimeout(()=>openContract(c.id),120);
-  return false;
-}
-
-function findContract(id){ return contracts.find(c=>c.id===id); }
-
-function openContract(id){
-  const c = findContract(id);
-  if (!c){ toast("Contract not found"); return; }
-  const isPurchase = c.type === "purchase";
-  const total = contractTotal(c);
-  const partyLabel = isPurchase ? "Supplier" : "Customer";
-  const yourLabel = isPurchase ? "Buyer (Your Business)" : "Seller (Your Business)";
-  const partyName = isPurchase ? c.supplierName : c.customerName;
-  showModal(`${esc(contractTypeLabel(c.type))} · ${esc(c.contractNo)}`, `
-    <div id="contractPrintArea" class="contract-preview">
-      <div class="contract-preview-head ${isPurchase ? "" : "sale-head"}">
-        <div><h2>Stockly</h2><p>Smart Inventory Manager</p></div>
-        <div style="text-align:right"><strong>${esc(contractTypeLabel(c.type))}</strong><p>${esc(c.contractNo)} · ${esc(formatDate(c.date))}</p></div>
-      </div>
-      <div class="contract-doc">
-        <div class="contract-section"><div class="contract-section-title">1. Parties Information</div><div class="contract-section-body contract-two">
-          <div><strong>${esc(yourLabel)}</strong><div class="contract-kv"><b>Business</b><span>${esc(c.businessName)}</span></div><div class="contract-kv"><b>Contact</b><span>—</span></div></div>
-          <div><strong>${esc(partyLabel)}</strong><div class="contract-kv"><b>Name</b><span>${esc(partyName)}</span></div><div class="contract-kv"><b>Company</b><span>${esc(c.company || "—")}</span></div><div class="contract-kv"><b>Phone</b><span>${esc(c.phone || "—")}</span></div><div class="contract-kv"><b>Address</b><span>${esc(c.address || "—")}</span></div></div>
-        </div></div>
-        <div class="contract-section"><div class="contract-section-title">2. Product Details</div><div class="contract-section-body">
-          <table class="contract-items"><thead><tr><th>No.</th><th>Product</th><th>SKU</th><th>Category</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead><tbody><tr><td>1</td><td>${esc(c.productName)}</td><td>${esc(c.sku || "—")}</td><td>${esc(c.category || "—")}</td><td>${esc(c.quantity)}</td><td>${money(c.unitPrice)}</td><td>${money(total)}</td></tr></tbody></table>
-          <div class="contract-total-line">Total Amount: ${money(total)}</div>
-        </div></div>
-        <div class="contract-section"><div class="contract-section-title">3. Terms & Conditions</div><div class="contract-section-body">
-          <div class="contract-kv"><b>Payment Terms</b><span>${esc(c.paymentTerms || "—")}</span></div>
-          <div class="contract-kv"><b>Delivery Date</b><span>${esc(c.deliveryDate ? formatDate(c.deliveryDate) : "—")}</span></div>
-          <div class="contract-kv"><b>Location</b><span>${esc(c.deliveryLocation || "—")}</span></div>
-          <div class="contract-kv"><b>Warranty</b><span>${esc(c.warranty || "—")}</span></div>
-          <div class="contract-kv"><b>Other Terms</b><span>${esc(c.otherTerms || "—")}</span></div>
-        </div></div>
-        <div class="contract-section"><div class="contract-section-title">4. Signatures</div><div class="contract-section-body contract-signatures">
-          <div><strong>For Stockly Business</strong><div class="contract-sign"></div><span class="contract-muted">Authorized Signatory</span><br><span class="contract-muted">Date: ${esc(formatDate(c.date))}</span></div>
-          <div><strong>For ${esc(partyName)}</strong><div class="contract-sign"></div><span class="contract-muted">Authorized Signatory</span><br><span class="contract-muted">Date: ${esc(formatDate(c.date))}</span></div>
-        </div></div>
-      </div>
-      <div class="contract-foot"><span>Stockly · Smart Business. Better Control.</span><span>${esc(c.contractNo)}</span></div>
-    </div>
-    <div class="contract-preview-actions">
-      <button type="button" class="btn-soft" onclick="printContract('${esc(c.id)}')">🖨️ Print</button>
-      <button type="button" class="btn-primary" onclick="deleteContract('${esc(c.id)}')">🗑️ Delete</button>
-    </div>`);
-}
-
-function printContract(id){
-  const c = findContract(id);
-  if (!c) return;
-  const isPurchase = c.type === "purchase";
-  const total = contractTotal(c);
-  const partyLabel = isPurchase ? "Supplier" : "Customer";
-  const yourLabel = isPurchase ? "Buyer (Your Business)" : "Seller (Your Business)";
-  const partyName = isPurchase ? c.supplierName : c.customerName;
-  const w = window.open("", "_blank", "width=900,height=1000");
-  if (!w){ toast("Allow pop-ups to print the contract"); return; }
-  w.document.write(`<!doctype html><html><head><title>${esc(contractTypeLabel(c.type))} ${esc(c.contractNo)}</title><style>body{font-family:Arial,sans-serif;color:#14213d;margin:0;padding:25px}h1,h2,h3,p{margin:0}.head{background:${isPurchase ? "#182a68" : "#075c54"};color:#fff;padding:20px;display:flex;justify-content:space-between}.section{border:1px solid #dfe5ef;border-radius:10px;margin:14px 0;overflow:hidden}.title{background:#f4f7fb;padding:9px;font-weight:bold}.body{padding:11px;font-size:12px}.two{display:grid;grid-template-columns:1fr 1fr;gap:20px}.kv{display:grid;grid-template-columns:105px 1fr;gap:6px;margin:5px 0}.items{width:100%;border-collapse:collapse;font-size:11px}.items th,.items td{border:1px solid #dfe5ef;padding:7px;text-align:left}.items th{background:#f4f7fb}.total{text-align:right;font-size:17px;font-weight:bold;margin-top:10px}.sign{display:grid;grid-template-columns:1fr 1fr;gap:35px}.line{margin-top:40px;border-bottom:1px solid #999}.foot{margin-top:18px;padding:10px;background:#f4f7fb;font-size:10px;display:flex;justify-content:space-between}@media print{body{padding:12mm}}</style></head><body>
-    <div class="head"><div><h1>Stockly</h1><p>Smart Inventory Manager</p></div><div style="text-align:right"><h2>${esc(contractTypeLabel(c.type))}</h2><p>${esc(c.contractNo)} · ${esc(formatDate(c.date))}</p></div></div>
-    <div class="section"><div class="title">1. Parties Information</div><div class="body two"><div><b>${esc(yourLabel)}</b><div class="kv"><b>Business</b><span>${esc(c.businessName)}</span></div></div><div><b>${esc(partyLabel)}</b><div class="kv"><b>Name</b><span>${esc(partyName)}</span></div><div class="kv"><b>Company</b><span>${esc(c.company||"—")}</span></div><div class="kv"><b>Phone</b><span>${esc(c.phone||"—")}</span></div><div class="kv"><b>Address</b><span>${esc(c.address||"—")}</span></div></div></div></div>
-    <div class="section"><div class="title">2. Product Details</div><div class="body"><table class="items"><tr><th>No.</th><th>Product</th><th>SKU</th><th>Category</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr><tr><td>1</td><td>${esc(c.productName)}</td><td>${esc(c.sku||"—")}</td><td>${esc(c.category||"—")}</td><td>${esc(c.quantity)}</td><td>${money(c.unitPrice)}</td><td>${money(total)}</td></tr></table><div class="total">Total Amount: ${money(total)}</div></div></div>
-    <div class="section"><div class="title">3. Terms & Conditions</div><div class="body"><div class="kv"><b>Payment</b><span>${esc(c.paymentTerms||"—")}</span></div><div class="kv"><b>Delivery</b><span>${esc(c.deliveryDate?formatDate(c.deliveryDate):"—")}</span></div><div class="kv"><b>Location</b><span>${esc(c.deliveryLocation||"—")}</span></div><div class="kv"><b>Warranty</b><span>${esc(c.warranty||"—")}</span></div><div class="kv"><b>Other Terms</b><span>${esc(c.otherTerms||"—")}</span></div></div></div>
-    <div class="section"><div class="title">4. Signatures</div><div class="body sign"><div><b>For Stockly Business</b><div class="line"></div><small>Authorized Signatory</small></div><div><b>For ${esc(partyName)}</b><div class="line"></div><small>Authorized Signatory</small></div></div></div>
-    <div class="foot"><span>Stockly · Smart Business. Better Control.</span><span>${esc(c.contractNo)}</span></div>
-    </body></html>`);
-  w.document.close();
-  w.focus();
-  setTimeout(()=>w.print(),250);
-}
-
-function deleteContract(id){
-  const c=findContract(id); if(!c)return;
-  if(!confirm(`Delete ${c.contractNo}?`))return;
-  contracts=contracts.filter(x=>x.id!==id); saveContracts(); closeModal(); renderContracts(); toast("Contract deleted");
-}
-
-
 /* ================= ESCAPE CLOSE ================= */
 
 document.addEventListener(
@@ -5406,7 +5134,6 @@ function startStockly() {
   renderReports();
 
   renderMeetings();
-  renderContracts();
 
 
   page("home");
@@ -5431,7 +5158,6 @@ function refreshAll() {
   renderReports();
 
   renderMeetings();
-  renderContracts();
 
 }
 
@@ -5460,3 +5186,335 @@ if (
 window.openPurchaseInvoice = openPurchaseInvoice;
 window.printPurchaseInvoice = printPurchaseInvoice;
 window.openInvoice = openInvoice;
+
+
+/* =========================================================
+   STOCKLY V6 — BUSINESS SUITE
+   ========================================================= */
+const STK_BUSINESS_KEY = "stockly_business_modules_v6";
+const STK_COMPANY_KEY = "stockly_company_settings_v6";
+
+let stkBusiness = {};
+let stkCompany = {name:"My Business", owner:"", phone:"", address:"", currency:"₹"};
+
+const STK_MODULES = {
+  records: {
+    title:"Records", icon:"📚", items:[
+      ["Party","👥","Customer / party master"],["Product","📦","Inventory products"],["Employee","🧑‍💼","Employee master"],["Expense","💸","Expense entries"],["Broker","🤝","Broker master"],["Bank","🏦","Bank accounts"],["Friend","🧑‍🤝‍🧑","Friend accounts"],["Interest Party","💰","Interest-party master"],["Owner","👔","Owner details"],["Goods","📦","Goods register"],["Bardana Party","🧺","Bardana party register"],["City","🏙️","City master"],["Contact Category","🏷️","Contact categories"]
+    ]
+  },
+  contracts: {
+    title:"Contracts", icon:"📜", items:[
+      ["Sales Contract","📤","Sales contract with GST, party and payment terms"],
+      ["Purchase Contract","📥","Purchase contract with GST, supplier and payment terms"]
+    ]
+  },
+  billing: {
+    title:"Sodagiri / Bill", icon:"🧾", items:[
+      ["Purchase Order","🛒","Create and track purchase orders"],["Sales Order","📋","Create and track sales orders"],["Purchase Bill","🧾","Record purchase bills"],["Sales Bill","🧾","Record sales bills"],["Nekal Book","📒","Outgoing / dispatch register"],["Kharro","📓","Kharro register"]
+    ]
+  },
+  accounts: {
+    title:"Accounts", icon:"💼", items:[
+      ["Cash Book","💵","Cash debit / credit ledger"],["Friend Account","🧑‍🤝‍🧑","Friend ledger"],["Expenses","💸","Expense ledger"],["Bank Transact","🏦","Bank transactions"],["Broker Account","🤝","Broker ledger"]
+    ]
+  },
+  interest: {
+    title:"Cash On Interest", icon:"💸", items:[
+      ["Giving","📤","Interest money given"],["Receiving","📥","Interest money received"],["Given Amt Receving","🔄","Track recovery of given amount"],["Received Amt Paying","🔁","Track repayment of received amount"]
+    ]
+  },
+  print: {
+    title:"Reports & Print", icon:"🖨️", items:[
+      ["Purchase Order","🛒","Printable purchase-order report"],
+      ["Sales Order","📋","Printable sales-order report"],
+      ["Purchase Bill","🧾","Printable purchase-bill report"],
+      ["Sales Bill","🧾","Printable sales-bill report"],
+      ["Cash Book","💵","Cash ledger"],
+      ["Party Ledger","👥","Party balances and ledger"],
+      ["Due Date Party Ledger","📅","Due-date party report"],
+      ["Product Account","📦","Product stock/value report"],
+      ["Interest Party Account","💰","Interest-party report"],
+      ["Interest Party Return Date Wise","📅","Interest returns by date"],
+      ["Employee Salary","🧑‍💼","Employee salary report"],
+      ["BankTransaction","🏦","Bank transaction report"],
+      ["Interest Giving","📤","Interest giving report"],
+      ["Interest Receiving","📥","Interest receiving report"],
+      ["Trial Balance","⚖️","Debit / credit summary"],
+      ["All Bank Account","🏦","All bank accounts"],
+      ["All Party","👥","All parties"],
+      ["All Interest Party","💰","All interest parties"],
+      ["All Dasti","📒","All dasti entries"],
+      ["All Expenses","💸","All expenses"],
+      ["Balance Sheet","📊","Business summary"],
+      ["Print All","🖨️","Combined printable report"],
+      ["Profit Report","📈","Revenue / profit report"],
+      ["Expense Details","💸","Detailed expense report"]
+    ]
+  },
+};
+
+const STK_FIELDS = {
+  "Sales Contract":[
+    ["contractNo","Contract No.","text",true],
+    ["date","Date","date",true],
+    ["party","Customer / Party","text",true],
+    ["gstin","Customer GSTIN","text",false],
+    ["place","Place of Supply","text",false],
+    ["items","Products / Items","textarea",true],
+    ["subtotal","Subtotal","number",true],
+    ["discount","Discount","number",false],
+    ["gstType","GST Type (CGST+SGST / IGST)","text",true],
+    ["gstRate","GST Rate %","number",false],
+    ["cgst","CGST","number",false],
+    ["sgst","SGST","number",false],
+    ["igst","IGST","number",false],
+    ["total","Grand Total","number",true],
+    ["paymentTerms","Payment Terms","text",false],
+    ["note","Notes","textarea",false]
+  ],
+  "Purchase Contract":[
+    ["contractNo","Contract No.","text",true],
+    ["date","Date","date",true],
+    ["party","Supplier / Party","text",true],
+    ["gstin","Supplier GSTIN","text",false],
+    ["place","Place of Supply","text",false],
+    ["items","Products / Items","textarea",true],
+    ["subtotal","Subtotal","number",true],
+    ["discount","Discount","number",false],
+    ["gstType","GST Type (CGST+SGST / IGST)","text",true],
+    ["gstRate","GST Rate %","number",false],
+    ["cgst","CGST","number",false],
+    ["sgst","SGST","number",false],
+    ["igst","IGST","number",false],
+    ["total","Grand Total","number",true],
+    ["paymentTerms","Payment Terms","text",false],
+    ["note","Notes","textarea",false]
+  ],
+  "Employee":[["name","Employee Name","text",true],["phone","Phone","tel",false],["role","Role","text",false],["salary","Salary","number",false],["note","Note","textarea",false]],
+  "Expense":[["date","Date","date",true],["category","Category","text",true],["amount","Amount","number",true],["paidBy","Paid By","text",false],["note","Note","textarea",false]],
+  "Broker":[["name","Broker Name","text",true],["phone","Phone","tel",false],["commission","Commission %","number",false],["note","Note","textarea",false]],
+  "Bank":[["name","Bank Name","text",true],["account","Account / UPI","text",false],["opening","Opening Balance","number",false],["note","Note","textarea",false]],
+  "Friend":[["name","Friend Name","text",true],["phone","Phone","tel",false],["balance","Opening Balance","number",false],["note","Note","textarea",false]],
+  "Interest Party":[["name","Party Name","text",true],["phone","Phone","tel",false],["rate","Interest %","number",false],["note","Note","textarea",false]],
+  "Owner":[["name","Owner Name","text",true],["phone","Phone","tel",false],["share","Share %","number",false],["note","Note","textarea",false]],
+  "Goods":[["name","Goods Name","text",true],["code","Code","text",false],["qty","Quantity","number",false],["note","Note","textarea",false]],
+  "Bardana Party":[["name","Party Name","text",true],["phone","Phone","tel",false],["items","Bardana Details","text",false],["note","Note","textarea",false]],
+  "City":[["name","City Name","text",true],["state","State","text",false],["note","Note","textarea",false]],
+  "Contact Category":[["name","Category Name","text",true],["description","Description","textarea",false]]
+};
+
+function stkLoadBusiness(){
+  try{ stkBusiness=JSON.parse(localStorage.getItem(STK_BUSINESS_KEY))||{}; }catch(e){stkBusiness={};}
+  try{ stkCompany=Object.assign(stkCompany,JSON.parse(localStorage.getItem(STK_COMPANY_KEY))||{}); }catch(e){}
+}
+function stkSaveBusiness(){localStorage.setItem(STK_BUSINESS_KEY,JSON.stringify(stkBusiness));}
+function stkSaveCompany(){localStorage.setItem(STK_COMPANY_KEY,JSON.stringify(stkCompany));}
+function stkArr(name){if(!Array.isArray(stkBusiness[name])) stkBusiness[name]=[];return stkBusiness[name];}
+function stkId(){return "stk_"+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+function stkText(v){return String(v??"");}
+function stkSafe(v){return stkText(v).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));}
+function stkMoney(v){return (stkCompany.currency||"₹")+Number(v||0).toLocaleString("en-IN",{maximumFractionDigits:2});}
+
+function stkFieldHtml(field,value=""){
+  const [key,label,type,required]=field;
+  const req=required?"required":"";
+  if(type==="textarea") return `<div class="field"><label>${stkSafe(label)}</label><textarea name="${key}" ${req}>${stkSafe(value)}</textarea></div>`;
+  return `<div class="field"><label>${stkSafe(label)}</label><input name="${key}" type="${type}" value="${stkSafe(value)}" ${req}></div>`;
+}
+
+function stkFieldsFor(name){
+  if(STK_FIELDS[name]) return STK_FIELDS[name];
+  if(["Party"].includes(name)) return [["name","Party Name","text",true],["phone","Phone","tel",false],["balance","Opening Balance","number",false],["due","Due Date","date",false],["note","Note","textarea",false]];
+  if(["Product"].includes(name)) return [["name","Product Name","text",true],["code","SKU","text",false],["qty","Stock","number",false],["price","Selling Price","number",false],["note","Note","textarea",false]];
+  if(name.includes("Order")) return [["date","Date","date",true],["party","Party / Supplier","text",true],["reference","Reference No.","text",false],["amount","Amount","number",true],["status","Status","text",false],["note","Note","textarea",false]];
+  if(name.includes("Bill")) return [["date","Date","date",true],["party","Party / Customer","text",true],["billNo","Bill No.","text",false],["amount","Amount","number",true],["paid","Paid Amount","number",false],["note","Note","textarea",false]];
+  if(name==="Nekal Book"||name==="Kharro") return [["date","Date","date",true],["party","Party","text",true],["type","Type","text",true],["amount","Amount","number",true],["note","Note","textarea",false]];
+  if(["Cash Book","Friend Account","Expenses","Broker Account"].includes(name)) return [["date","Date","date",true],["name","Name / Account","text",true],["type","Debit / Credit","text",true],["amount","Amount","number",true],["note","Note","textarea",false]];
+  if(name==="Bank Transact") return [["date","Date","date",true],["bank","Bank","text",true],["type","Deposit / Withdrawal","text",true],["amount","Amount","number",true],["reference","Reference","text",false],["note","Note","textarea",false]];
+  if(["Giving","Receiving","Given Amt Receving","Received Amt Paying"].includes(name)) return [["date","Date","date",true],["person","Person / Party","text",true],["amount","Principal Amount","number",true],["interest","Interest Amount","number",false],["returnDate","Return Date","date",false],["status","Status","text",false],["note","Note","textarea",false]];
+  return [["name","Name","text",true],["note","Note","textarea",false]];
+}
+
+function stkOpenRecord(name,id=null){
+  const arr=stkArr(name), item=id?arr.find(x=>x.id===id):null;
+  const fields=stkFieldsFor(name);
+  const today=new Date().toISOString().slice(0,10);
+  const html=`<form onsubmit="stkSaveRecord(event,'${stkSafe(name)}','${id||""}')">${fields.map(f=>stkFieldHtml(f,item?item[f[0]]:(f[0]==="date"?today:""))).join("")}<button class="save">${id?"Save Changes":"Add Entry"}</button></form>`;
+  showModal((id?"Edit ":"Add ")+name,html);
+}
+
+function stkSaveRecord(event,name,id){
+  event.preventDefault();
+  const fd=new FormData(event.target), obj={id:id||stkId(),createdAt:new Date().toISOString()};
+  for(const f of stkFieldsFor(name)) obj[f[0]]=fd.get(f[0])||"";
+  const arr=stkArr(name), index=arr.findIndex(x=>x.id===id);
+  if(index>=0) arr[index]=Object.assign({},arr[index],obj); else arr.unshift(obj);
+  stkSaveBusiness(); closeModal(); toast(name+(id?" updated":" added")); stkRenderModule(name);
+}
+
+function stkDeleteRecord(name,id){
+  if(!confirm("Delete this "+name+" entry?")) return;
+  stkBusiness[name]=stkArr(name).filter(x=>x.id!==id); stkSaveBusiness(); stkRenderModule(name); toast("Entry deleted");
+}
+
+function stkRenderModule(name){
+  const host=document.getElementById("stkModuleHost"); if(!host)return;
+  const arr=stkArr(name), q=(document.getElementById("stkModuleSearch")?.value||"").toLowerCase();
+  const rows=arr.filter(x=>JSON.stringify(x).toLowerCase().includes(q));
+  host.innerHTML=`<div class="welcome"><h2>${stkSafe(name)}</h2><p>Manage ${stkSafe(name.toLowerCase())} data locally in Stockly.</p></div><div class="business-actions"><button class="primary" onclick="stkOpenRecord('${stkSafe(name)}')">＋ Add Entry</button><button onclick="stkPrintModule('${stkSafe(name)}')">🖨️ Print</button></div><input id="stkModuleSearch" class="search" placeholder="🔎 Search ${stkSafe(name)}..." value="${stkSafe(q)}" oninput="stkRenderModule('${stkSafe(name)}')"><div class="business-list">${rows.length?rows.map(x=>{const values=Object.entries(x).filter(([k])=>!['id','createdAt'].includes(k)).slice(0,4);const amount=x.amount?stkMoney(x.amount):"";return `<div class="business-row"><div class="business-row-top"><div><h4>${stkSafe(x.name||x.party||x.person||x.bank||x.category||name)}</h4><p>${values.map(([k,v])=>`${stkSafe(k)}: ${stkSafe(v)}`).join(" · ")}</p></div><strong>${stkSafe(amount)}</strong></div><div class="business-actions"><button onclick="stkOpenRecord('${stkSafe(name)}','${x.id}')">Edit</button><button class="danger" onclick="stkDeleteRecord('${stkSafe(name)}','${x.id}')">Delete</button></div></div>`}).join(""):"<div class='empty'><div class='empty-icon'>📭</div><strong>No entries yet</strong><p>Add your first entry above.</p></div>"}</div>`;
+}
+
+function stkOpenModule(name){
+  if(name==="Party"){page("parties");return;}
+  if(name==="Product"){page("products");return;}
+  if(name==="Sales Bill"){page("sales");return;}
+  if(name==="Purchase Bill"){page("purchases");return;}
+  if(name==="Purchase Order"||name==="Sales Order"||name==="Nekal Book"||name==="Kharro"||name==="Cash Book"||name==="Friend Account"||name==="Expenses"||name==="Bank Transact"||name==="Broker Account"||name==="Giving"||name==="Receiving"||name==="Given Amt Receving"||name==="Received Amt Paying"||STK_FIELDS[name]||name==="Goods"||name==="Employee"||name==="Broker"||name==="Bank"||name==="Friend"||name==="Interest Party"||name==="Owner"||name==="Bardana Party"||name==="City"||name==="Contact Category"){
+    showModal(name,`<div id="stkModuleHost"></div>`); stkRenderModule(name); return;
+  }
+  if(name==="Change Password"){stkChangePin();return;}
+  if(name==="Login"){stkLogin();return;}
+  if(name==="Management"){stkManagement();return;}
+  if(name==="Delete"){stkDeleteManager();return;}
+  if(STK_MODULES.print.items.some(x=>x[0]===name)){stkPrintModule(name);return;}
+}
+
+function renderRecordsCenter(){
+  const host=document.getElementById("recordsCenter");
+  if(!host) return;
+  const items=STK_MODULES.records.items;
+  host.innerHTML=items.map(x=>`<button type="button" class="business-card" onclick="stkOpenModule('${stkSafe(x[0])}')"><div class="bi">${x[1]}</div><strong>${stkSafe(x[0])}</strong><small>${stkSafe(x[2])}</small></button>`).join("");
+}
+
+function renderContractsCenter(){
+  const host=document.getElementById("contractsCenter");
+  if(!host) return;
+  const items=STK_MODULES.contracts.items;
+  host.innerHTML=items.map(x=>`<button type="button" class="business-card" onclick="stkOpenModule('${stkSafe(x[0])}')"><div class="bi">${x[1]}</div><strong>${stkSafe(x[0])}</strong><small>${stkSafe(x[2])}</small></button>`).join("");
+}
+
+function renderReportCenter(){
+  const host=document.getElementById("reportCenter");
+  if(!host) return;
+  const items=STK_MODULES.print.items;
+  host.innerHTML=items.map(x=>`<button type="button" class="business-card" onclick="stkPrintReport('${stkSafe(x[0])}')"><div class="bi">${x[1]}</div><strong>${stkSafe(x[0])}</strong><small>${stkSafe(x[2])}</small></button>`).join("");
+}
+
+function renderBusinessMenu(){
+  renderReportCenter();
+  const host=document.getElementById("businessMenu"); if(!host)return;
+  const q=(document.getElementById("businessSearch")?.value||"").toLowerCase();
+  host.innerHTML=Object.entries(STK_MODULES).map(([key,group])=>{
+    const items=group.items.filter(x=>(x[0]+" "+x[2]).toLowerCase().includes(q)); if(!items.length)return "";
+    return `<h3 class="business-section">${group.icon} ${stkSafe(group.title)}</h3><div class="business-grid">${items.map(x=>{const action=key==="print"?`stkPrintReport('${stkSafe(x[0])}')`:`stkOpenModule('${stkSafe(x[0])}')`;return `<button class="business-card" onclick="${action}"><div class="bi">${x[1]}</div><strong>${stkSafe(x[0])}</strong><small>${stkSafe(x[2])}</small></button>`}).join("")}</div>`;
+  }).join("");
+}
+
+function stkOpenGroup(groupKey){
+  const group=STK_MODULES[groupKey];
+  if(!group) return;
+  const cards=group.items.map(x=>{
+    const action=`stkOpenModule('${stkSafe(x[0])}')`;
+    return `<button class="business-card" onclick="${action}"><div class="bi">${x[1]}</div><strong>${stkSafe(x[0])}</strong><small>${stkSafe(x[2])}</small></button>`;
+  }).join("");
+  showModal(group.title, `<div class="business-grid">${cards}</div>`);
+}
+
+function stkPrintModule(name){
+  const arr=stkArr(name), rows=arr.map(x=>Object.entries(x).filter(([k])=>!['id','createdAt'].includes(k))).map(e=>`<tr>${e.map(([,v])=>`<td>${stkSafe(v)}</td>`).join("")}</tr>`).join("");
+  const headers=arr[0]?Object.keys(arr[0]).filter(k=>!['id','createdAt'].includes(k)):[];
+  const win=window.open("","_blank","width=900,height=700"); if(!win){toast("Allow pop-ups to print");return;}
+  win.document.write(`<html><head><title>${stkSafe(name)} - Stockly</title><style>body{font-family:Arial;padding:30px;color:#171a21}h1{margin-bottom:4px}p{color:#666}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #ddd;padding:8px;text-align:left;font-size:12px}th{background:#f2f3f7}</style></head><body onload="window.print()"><h1>${stkSafe(stkCompany.name)} — ${stkSafe(name)}</h1><p>Generated ${new Date().toLocaleString("en-IN")}</p><table><thead><tr>${headers.map(h=>`<th>${stkSafe(h)}</th>`).join("")}</tr></thead><tbody>${rows||`<tr><td colspan="${Math.max(headers.length,1)}">No data</td></tr>`}</tbody></table></body></html>`);win.document.close();
+}
+
+function stkPrintReport(name){
+  if(name==="Product Account"){stkPrintModule("Product");return;}
+  if(name==="All Party"||name==="Party Ledger"||name==="Due Date Party Ledger"){stkPrintModule("Party");return;}
+  if(name==="All Expenses"||name==="Expense Details"){stkPrintModule("Expense");return;}
+  if(name==="All Bank Account"){stkPrintModule("Bank");return;}
+  if(name==="BankTransaction"){stkPrintModule("Bank Transact");return;}
+  if(name==="Employee Salary"){stkPrintModule("Employee");return;}
+  if(name==="Cash Book"){stkPrintModule("Cash Book");return;}
+  if(name==="All Interest Party"||name==="Interest Party Account"){stkPrintModule("Interest Party");return;}
+  if(name==="Interest Giving"||name==="Interest Receiving"||name==="Interest Party Return Date Wise") {stkPrintModule(name==="Interest Giving"?"Giving":"Receiving");return;}
+  if(["Purchase Order","Sales Order","Nekal Book","Kharro"].includes(name)){stkPrintModule(name);return;}
+  if(name==="Print All"){
+    const win=window.open("","_blank","width=900,height=700");
+    if(!win){toast("Allow pop-ups to print");return;}
+    const names=STK_MODULES.print.items.filter(x=>x[0]!=="Print All").map(x=>x[0]);
+    const sections=names.map(n=>`<section style="margin-bottom:25px"><h2>${stkSafe(n)}</h2><p>Stockly report</p></section>`).join("");
+    win.document.write(`<html><head><title>Stockly — Print All</title><style>body{font-family:Arial;padding:30px;color:#171a21}section{border-bottom:1px solid #ddd;padding:10px 0}</style></head><body onload="window.print()"><h1>${stkSafe(stkCompany.name)} — Print All</h1>${sections}</body></html>`);
+    win.document.close();
+    return;
+  }
+  if(name==="Purchase Bill"){stkPrintModule("Purchase Bill");return;}
+  if(name==="Sales Bill"){stkPrintModule("Sales Bill");return;}
+  const sales=getSalesTotal(),profit=getProfitTotal(),expenses=stkArr("Expense").reduce((a,x)=>a+Number(x.amount||0),0),inventory=getInventoryValue();
+  const win=window.open("","_blank","width=900,height=700"); if(!win){toast("Allow pop-ups to print");return;}
+  win.document.write(`<html><head><title>${stkSafe(name)} - Stockly</title><style>body{font-family:Arial;padding:35px}h1{margin-bottom:5px}.box{display:inline-block;width:45%;margin:8px;padding:18px;border:1px solid #ddd;border-radius:10px}.v{font-size:25px;font-weight:bold;margin-top:8px}</style></head><body onload="window.print()"><h1>${stkSafe(stkCompany.name)} — ${stkSafe(name)}</h1><p>Generated ${new Date().toLocaleString("en-IN")}</p><div class="box">Revenue<div class="v">${stkMoney(sales)}</div></div><div class="box">Profit<div class="v">${stkMoney(profit-expenses)}</div></div><div class="box">Inventory<div class="v">${stkMoney(inventory)}</div></div><div class="box">Expenses<div class="v">${stkMoney(expenses)}</div></div></body></html>`);win.document.close();
+}
+
+function stkChangePin(){
+  showModal("Change Password",`<form onsubmit="stkSavePin(event)"><div class="field"><label>New PIN / Password</label><input name="pin" type="password" minlength="4" required></div><div class="field"><label>Confirm PIN</label><input name="confirm" type="password" minlength="4" required></div><button class="save">Save PIN</button></form>`);
+}
+function stkSavePin(event){event.preventDefault();const f=new FormData(event.target);if(f.get("pin")!==f.get("confirm")){toast("PINs do not match");return;}localStorage.setItem("stockly_pin_v6",f.get("pin"));closeModal();toast("PIN saved");}
+function stkLogin(){
+  const pin=localStorage.getItem("stockly_pin_v6");
+  if(!pin){toast("No PIN set — use Change Password first");return;}
+  showModal("Login",`<form onsubmit="stkCheckPin(event)"><div class="field"><label>PIN</label><input name="pin" type="password" required autofocus></div><button class="save">Unlock</button></form>`);
+}
+function stkCheckPin(event){event.preventDefault();const f=new FormData(event.target);if(f.get("pin")===localStorage.getItem("stockly_pin_v6")){closeModal();toast("Login successful");}else toast("Wrong PIN");}
+function stkManagement(){
+  showModal("Management",`<form onsubmit="stkSaveManagement(event)">${[["name","Business Name","text",stkCompany.name],["owner","Owner Name","text",stkCompany.owner],["phone","Phone","tel",stkCompany.phone],["address","Address","text",stkCompany.address],["currency","Currency Symbol","text",stkCompany.currency]].map(x=>`<div class="field"><label>${x[1]}</label><input name="${x[0]}" type="${x[2]}" value="${stkSafe(x[3])}" required></div>`).join("")}<button class="save">Save Business Settings</button></form>`);
+}
+function stkSaveManagement(event){event.preventDefault();const f=new FormData(event.target);for(const k of ["name","owner","phone","address","currency"])stkCompany[k]=f.get(k)||"";stkSaveCompany();closeModal();toast("Management settings saved");renderBusinessMenu();}
+function stkDeleteManager(){
+  const keys=Object.keys(stkBusiness).filter(k=>Array.isArray(stkBusiness[k]));
+  showModal("Delete Data",`<div class="field"><label>Select module</label><select id="stkDeleteSelect">${keys.map(k=>`<option>${stkSafe(k)}</option>`).join("")}</select></div><button class="save" onclick="stkDeleteModule()">Delete Selected Module</button><button class="secondary" onclick="closeModal()">Cancel</button>`);
+}
+function stkDeleteModule(){const n=document.getElementById("stkDeleteSelect")?.value;if(!n)return;if(!confirm("Delete all data in "+n+"?"))return;delete stkBusiness[n];stkSaveBusiness();closeModal();toast(n+" data deleted");}
+
+stkLoadBusiness();
+
+
+
+/* ================= V6 BACKUP EXTENSION ================= */
+const _stkLegacyBackup = backupData;
+backupData = function(){
+  const backup={app:"Stockly",version:"V6",exportedAt:new Date().toISOString(),products,transactions,parties,meetings, business:stkBusiness, company:stkCompany};
+  const blob=new Blob([JSON.stringify(backup,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob); const link=document.createElement("a");
+  link.href=url; link.download=`Stockly-V6-Backup-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url); toast("Full V6 backup downloaded");
+};
+
+restoreData = function(event){
+  const file=event.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(){
+    try{
+      const data=JSON.parse(reader.result);
+      if(!data || !Array.isArray(data.products) || !Array.isArray(data.transactions) || !Array.isArray(data.parties)) throw new Error("Invalid backup");
+      if(!confirm("Restore this backup? Current Stockly data will be replaced.")){event.target.value="";return;}
+      products=data.products; transactions=data.transactions; parties=data.parties;
+      meetings=Array.isArray(data.meetings)?data.meetings:[];
+      stkBusiness=data.business&&typeof data.business==="object"?data.business:{};
+      stkCompany=Object.assign({name:"My Business",owner:"",phone:"",address:"",currency:"₹"},data.company||{});
+      saveProducts();saveTransactions();saveParties();saveMeetings();stkSaveBusiness();stkSaveCompany();
+      event.target.value=""; toast("Full V6 backup restored"); setTimeout(()=>location.reload(),700);
+    }catch(e){console.error(e);toast("Invalid Stockly backup file");event.target.value="";}
+  };
+  reader.readAsText(file);
+};
+
+const _stkLegacyReset = resetData;
+resetData = function(){
+  if(!confirm("Delete ALL Stockly data? This cannot be undone."))return;
+  if(!confirm("Are you absolutely sure? Products, sales, purchases, customers and business tools will be deleted."))return;
+  localStorage.removeItem(PRODUCT_KEY);localStorage.removeItem(TRANSACTION_KEY);localStorage.removeItem(PARTY_KEY);localStorage.removeItem(MEETING_KEY);
+  localStorage.removeItem(STK_BUSINESS_KEY);localStorage.removeItem(STK_COMPANY_KEY);localStorage.removeItem("stockly_pin_v6");
+  products=[];transactions=[];parties=[];meetings=[];stkBusiness={};stkCompany={name:"My Business",owner:"",phone:"",address:"",currency:"₹"};
+  toast("All Stockly V6 data has been reset");setTimeout(()=>location.reload(),700);
+};
+
